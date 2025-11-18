@@ -1,0 +1,57 @@
+{
+  "name": "lista-compras-microservices",
+  "version": "1.0.0",
+  "description": "Sistema de Microsserviços para Gerenciamento de Listas de Compras",
+  "main": "client-demo.js",
+  "scripts": {
+    "start:gateway:delayed": "node -e \"setTimeout(() => { require('child_process').exec('cd api-gateway && npm start', {stdio: 'inherit'}) }, 5000)\"",
+    "dev": "concurrently \"npm run dev:user\" \"npm run dev:item\" \"npm run dev:list\" \"npm run dev:gateway\"",
+    "dev:user": "cd services/user-service && npm run dev",
+    "dev:item": "cd services/item-service && npm run dev",
+    "dev:list": "cd services/list-service && npm run dev",
+    "dev:gateway": "cd api-gateway && npm run dev",
+    "demo": "node client-demo.js",
+    "health": "curl -s http://localhost:3000/health",
+    "registry": "curl -s http://localhost:3000/registry",
+    "clean": "rm -rf node_modules services/*/node_modules api-gateway/node_modules",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "rabbitmq:setup": "echo 'Configure manualmente no RabbitMQ Manager: exchange shopping_events e queues notification_queue, analytics_queue'",
+    "start": "concurrently \"node services/user-service/server.js\" \"node services/item-service/server.js\" \"node services/list-service/server.js\" \"node services/notification-service/server.js\" \"node services/analytics-service/server.js\" \"node api-gateway/server.js\"",
+    "start:user": "cd services/user-service && node server.js",
+    "start:item": "cd services/item-service && node server.js",
+    "start:list": "cd services/list-service && node server.js",
+    "start:notification": "cd services/notification-service && node server.js",
+    "start:analytics": "cd services/analytics-service && node server.js",
+    "start:gateway": "cd api-gateway && node server.js",
+    "install:all": "npm install && cd services/user-service && npm install && cd ../item-service && npm install && cd ../list-service && npm install && cd ../notification-service && npm install && cd ../analytics-service && npm install && cd ../../api-gateway && npm install",
+    "stop": "taskkill /f /im node.exe"
+  },
+  "keywords": [
+    "microservices",
+    "nosql",
+    "api-gateway",
+    "service-discovery",
+    "puc-minas"
+  ],
+  "author": "Aluno PUC Minas",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aluno-pucminas/lab03-microservices-nosql.git"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "all": "^0.0.0",
+    "amqplib": "^0.10.9",
+    "axios": "^1.6.0",
+    "dotenv": "^17.2.3",
+    "fs-extra": "^11.1.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+}
