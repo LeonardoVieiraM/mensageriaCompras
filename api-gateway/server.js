@@ -538,6 +538,8 @@ class ApiGateway {
           "list-service": "http://localhost:3002",
         };
 
+        const healthResults = {};
+
         // Testar cada serviço diretamente
         for (const [serviceName, serviceUrl] of Object.entries(serviceUrls)) {
           try {

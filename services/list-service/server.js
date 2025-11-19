@@ -150,7 +150,6 @@ class ListService {
     }
 
     try {
-      // ✅ CORRIGIDO: Usar URL hardcoded como fallback
       const userServiceUrl = "http://localhost:3001";
 
       // Validar token com User Service

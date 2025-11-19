@@ -143,6 +143,22 @@ class ServiceRegistry {
     }
   }
 
+  async unregister(serviceName) {
+    try {
+      const services = await this.#readRegistry();
+      if (services[serviceName]) {
+        delete services[serviceName];
+        await this.#writeRegistry(services);
+        console.log(`✅ Serviço ${serviceName} removido do registry`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("❌ Erro ao remover serviço:", error.message);
+      return false;
+    }
+  }
+
   async cleanup() {
     try {
       const services = await this.#readRegistry();
@@ -172,24 +188,12 @@ class ServiceRegistry {
   }
 }
 
-// Singleton instance - mas agora funciona apenas com arquivo
+// Singleton instance
 const serviceRegistry = new ServiceRegistry();
 
 // Limpeza regular de serviços inativos
 setInterval(() => {
   serviceRegistry.cleanup();
 }, 60000);
-
-unregister(serviceName);
-{
-  const services = this.readRegistry();
-  if (services[serviceName]) {
-    delete services[serviceName];
-    this.writeRegistry(services);
-    console.log(`✅ Serviço ${serviceName} removido do registry`);
-    return true;
-  }
-  return false;
-}
 
 module.exports = serviceRegistry;
