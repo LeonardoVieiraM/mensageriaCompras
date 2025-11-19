@@ -12,6 +12,22 @@
     },
     "role": "admin",
     "status": "active",
-    "updatedAt": "2025-09-21T22:22:06.493Z"
+    "updatedAt": "2025-11-19T20:31:19.362Z"
+  },
+  {
+    "id": "2ec320a8-c7e2-4aad-9e3b-3f26a27188d2",
+    "email": "aaa@hotmail.com",
+    "username": "aaa",
+    "password": "$2a$12$p4kK9GYiG0sf5bRxVe.DeuptEAx/xSRkAfstH2W5A46BomM4IMnAC",
+    "firstName": "aaa",
+    "lastName": "aaa",
+    "preferences": {
+      "defaultStore": "Mercado",
+      "currency": "BRL"
+    },
+    "role": "user",
+    "status": "active",
+    "createdAt": "2025-11-19T19:11:02.320Z",
+    "updatedAt": "2025-11-19T19:11:02.320Z"
   }
 ]

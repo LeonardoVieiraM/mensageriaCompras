@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../../.env' });
+require("dotenv").config({ path: "../../.env" });
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -75,7 +75,7 @@ class ListService {
       }
     });
 
-    // Service info
+    // Service info (rota pública)
     this.app.get("/", (req, res) => {
       res.json({
         service: "List Service",
@@ -96,28 +96,26 @@ class ListService {
       });
     });
 
-    // Todas as rotas precisam de autenticação
+    // ✅ MIDDLEWARE DE AUTH PARA TODAS AS ROTAS SEGUINTES
     this.app.use(this.authMiddleware.bind(this));
 
-    // List routes - CORRIGIDO: rotas na raiz
-    this.app.post("/", this.createList.bind(this)); // POST /
-    this.app.post(
-      "/lists/:id/checkout",
-      this.authMiddleware.bind(this),
-      this.checkoutList.bind(this)
-    );
-    this.app.get("/", this.getLists.bind(this)); // GET /
-    this.app.get("/:id", this.getList.bind(this)); // GET /:id
-    this.app.put("/:id", this.updateList.bind(this)); // PUT /:id
-    this.app.delete("/:id", this.deleteList.bind(this)); // DELETE /:id
+    // ✅ ROTAS AUTENTICADAS - SEM DUPLICATAS
 
-    // List items routes
-    this.app.post("/:id/items", this.addItemToList.bind(this)); // POST /:id/items
-    this.app.put("/:id/items/:itemId", this.updateItemInList.bind(this)); // PUT /:id/items/:itemId
-    this.app.delete("/:id/items/:itemId", this.removeItemFromList.bind(this)); // DELETE /:id/items/:itemId
+    // Rotas de Listas
+    this.app.post("/", this.createList.bind(this)); // POST / - Criar lista
+    this.app.get("/user-lists", this.getLists.bind(this)); // GET /user-lists - Buscar TODAS as listas do usuário
+    this.app.get("/:id", this.getList.bind(this)); // GET /:id - Buscar lista específica
+    this.app.put("/:id", this.updateList.bind(this)); // PUT /:id - Atualizar lista
+    this.app.delete("/:id", this.deleteList.bind(this)); // DELETE /:id - Excluir lista
 
-    // Summary route
-    this.app.get("/:id/summary", this.getListSummary.bind(this)); // GET /:id/summary
+    // Rotas de Itens
+    this.app.post("/:id/items", this.addItemToList.bind(this)); // POST /:id/items - Adicionar item
+    this.app.put("/:id/items/:itemId", this.updateItemInList.bind(this)); // PUT /:id/items/:itemId - Atualizar item
+    this.app.delete("/:id/items/:itemId", this.removeItemFromList.bind(this)); // DELETE /:id/items/:itemId - Remover item
+
+    // Rotas de Resumo e Checkout
+    this.app.get("/:id/summary", this.getListSummary.bind(this)); // GET /:id/summary - Resumo da lista
+    this.app.post("/:id/checkout", this.checkoutList.bind(this)); // POST /:id/checkout - Finalizar compra
   }
 
   setupErrorHandling() {

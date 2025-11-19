@@ -45,7 +45,49 @@ class ApiGateway {
 
   setupMiddleware() {
     this.app.use(helmet());
-    this.app.use(cors());
+
+    this.app.use((req, res, next) => {
+      // Permite TODAS as origens em desenvolvimento
+      const allowedOrigins = [
+        "http://localhost:3000",
+        "http://localhost:5000",
+        "http://localhost:8080",
+        "http://localhost:18948",
+        "http://localhost:44965",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5000",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:18948",
+        "http://127.0.0.1:44965",
+      ];
+
+      const origin = req.headers.origin;
+
+      if (allowedOrigins.includes(origin)) {
+        res.header("Access-Control-Allow-Origin", origin);
+      } else {
+        res.header("Access-Control-Allow-Origin", "*");
+      }
+
+      res.header(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+      );
+      res.header(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+      );
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Max-Age", "86400"); // 24 hours
+
+      if (req.method === "OPTIONS") {
+        console.log("✅ Preflight OPTIONS request handled");
+        return res.status(200).end();
+      }
+
+      next();
+    });
+
     this.app.use(morgan("combined"));
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
@@ -55,14 +97,6 @@ class ApiGateway {
       res.setHeader("X-Service", this.serviceName);
       res.setHeader("X-Service-Version", "1.0.0");
       res.setHeader("X-Gateway", "Express");
-      next();
-    });
-
-    // Request logging
-    this.app.use((req, res, next) => {
-      console.log(
-        `${new Date().toISOString()} - ${req.method} ${req.originalUrl}`
-      );
       next();
     });
   }
@@ -92,21 +126,36 @@ class ApiGateway {
     // Service registry endpoint
     this.app.get("/registry", this.getRegistry.bind(this));
 
-    // Service endpoints
+    // ✅ CORREÇÃO DAS ROTAS - MAPEAMENTO CORRETO
     this.app.use("/api/auth", this.proxyToService("user-service", "/auth"));
     this.app.use("/api/users", this.proxyToService("user-service", "/users"));
-    this.app.use("/api/items", this.proxyToService("item-service", "/"));
+
+    // ✅ CORREÇÃO CRÍTICA: /api/lists vai para / do list-service
     this.app.use("/api/lists", this.proxyToService("list-service", "/"));
-    this.app.post("/api/lists/:id/checkout", (req, res, next) => {
-      console.log(
-        `🔗 Roteando checkout para list-service: ${req.method} ${req.originalUrl}`
-      );
-      this.proxyRequest("list-service", req, res, next);
-    });
+
+    // ✅ CORREÇÃO: /api/items vai para / do item-service
+    this.app.use("/api/items", this.proxyToService("item-service", "/"));
+
     // Aggregated endpoints
     this.app.get("/api/dashboard", this.getDashboard.bind(this));
     this.app.get("/api/search", this.globalSearch.bind(this));
 
+
+      // ✅ ROTAS CORRIGIDAS - ESPECÍFICAS
+  this.app.use("/api/auth", this.proxyToService("user-service", "/auth"));
+  this.app.use("/api/users", this.proxyToService("user-service", "/users"));
+  
+  // ✅ ROTA ESPECÍFICA PARA BUSCAR LISTAS
+  this.app.get("/api/lists", this.proxyToService("list-service", "/"));
+  
+  // ✅ ROTAS RESTANTES PARA LISTAS (com parâmetros)
+  this.app.use("/api/lists/:id", this.proxyToService("list-service", "/"));
+  
+  // ✅ ROTA PARA CRIAR LISTA (já está funcionando)
+  this.app.post("/api/lists", this.proxyToService("list-service", "/"));
+  
+  this.app.use("/api/items", this.proxyToService("item-service", "/"));
+  
     // Root endpoint
     this.app.get("/", (req, res) => {
       res.json({
@@ -122,7 +171,7 @@ class ApiGateway {
           "/api/auth/* - User Service",
           "/api/users/* - User Service",
           "/api/items/* - Item Service",
-          "/api/lists/* - List Service",
+          "/api/lists/* - List Service", // ← ESTA É A ROTA IMPORTANTE
         ],
       });
     });
