@@ -1,3 +1,6 @@
 /node_modules
 /.env
 /api-gateway/node_modules
+/services/item-service/node_modules
+/services/list-service/node_modules
+/services/user-service/node_modules
