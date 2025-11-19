@@ -4,3 +4,4 @@
 /services/item-service/node_modules
 /services/list-service/node_modules
 /services/user-service/node_modules
+shared/service-registry.json
