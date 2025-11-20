@@ -218,13 +218,19 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                         final list = filteredLists[index];
                         return ShoppingListCard(
                           list: list,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ShoppingListDetailScreen(list: list),
-                            ),
-                          ),
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ShoppingListDetailScreen(list: list),
+                              ),
+                            );
+
+                            if (result == true) {
+                              await _loadLists();
+                            }
+                          },
                           onEdit: () => _openListForm(list),
                           onDelete: () => _deleteList(list),
                         );

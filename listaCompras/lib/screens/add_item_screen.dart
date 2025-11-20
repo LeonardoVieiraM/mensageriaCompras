@@ -14,7 +14,7 @@ class AddItemScreen extends StatefulWidget {
 class _AddItemScreenState extends State<AddItemScreen> {
   final _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
-  List<Map<String, dynamic>> _categories = [];
+  List<String> _categories = [];
   bool _isSearching = false;
   bool _isLoadingCategories = false;
 
@@ -51,6 +51,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
         _searchResults = results;
         _isSearching = false;
       });
+
+      print('🔍 Busca por "$query" encontrou ${results.length} resultados');
     } catch (e) {
       setState(() => _isSearching = false);
       _showError('Erro na busca: $e');
@@ -70,7 +72,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       );
 
       await ApiService.addItemToList(widget.listId, item);
-      
+
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -87,10 +89,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -128,14 +127,14 @@ class _AddItemScreenState extends State<AddItemScreen> {
               onChanged: _searchProducts,
             ),
           ),
-          
+
           // Resultados da Busca
           Expanded(
             child: _isSearching
                 ? const Center(child: CircularProgressIndicator())
                 : _searchResults.isNotEmpty
-                    ? _buildSearchResults()
-                    : _buildCategories(),
+                ? _buildSearchResults()
+                : _buildCategories(),
           ),
         ],
       ),
@@ -161,7 +160,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${product['category']} • ${product['brand'] ?? 'Sem marca'}'),
+              Text(
+                '${product['category']} • ${product['brand'] ?? 'Sem marca'}',
+              ),
               Text(
                 'R\$${product['averagePrice']?.toStringAsFixed(2) ?? '0.00'}',
                 style: const TextStyle(
@@ -191,10 +192,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
           padding: EdgeInsets.all(16),
           child: Text(
             'Categorias',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
         ..._categories.map((category) {
@@ -203,16 +201,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: _getCategoryColor(category['name']),
+                color: _getCategoryColor(category),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.category, color: Colors.white),
+              child: const Icon(Icons.category, color: Colors.white),
             ),
-            title: Text(category['name']),
+            title: Text(category),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              _searchController.text = category['name'];
-              _searchProducts(category['name']);
+              _searchController.text = category;
+              _searchProducts(category);
             },
           );
         }),

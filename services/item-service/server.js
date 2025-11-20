@@ -620,15 +620,28 @@ class ItemService {
         });
       }
 
+      console.log("🔍 [ITEM-SERVICE] Buscando:", { q, category, limit });
+
       const filter = {
         active: true,
-        $regex: q,
-        $options: "i",
-        $field: "name", // buscar por nome
       };
 
-      // Filtrar por categoria se fornecida
-      if (category) {
+      // ✅ CORREÇÃO: Se a busca é exatamente uma categoria, buscar por categoria
+      const categories = ["Alimentos", "Bebidas", "Higiene", "Limpeza"];
+      if (categories.includes(q)) {
+        // Buscar por categoria
+        filter.category = q;
+        console.log(`🔍 [ITEM-SERVICE] Buscando por categoria: ${q}`);
+      } else {
+        // Buscar por nome (busca normal)
+        filter.$regex = q;
+        filter.$options = "i";
+        filter.$field = "name";
+        console.log(`🔍 [ITEM-SERVICE] Buscando por nome: ${q}`);
+      }
+
+      // Filtrar por categoria adicional se fornecida
+      if (category && category !== "all") {
         filter.category = category;
       }
 
@@ -637,6 +650,8 @@ class ItemService {
         sort: { name: 1 },
       });
 
+      console.log(`✅ [ITEM-SERVICE] Encontrados ${items.length} itens`);
+
       res.json({
         success: true,
         data: items,
@@ -644,6 +659,7 @@ class ItemService {
           query: q,
           category: category || "all",
           results: items.length,
+          type: categories.includes(q) ? "category" : "name",
         },
       });
     } catch (error) {

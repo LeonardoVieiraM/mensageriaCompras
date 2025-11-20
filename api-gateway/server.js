@@ -46,8 +46,8 @@ class ApiGateway {
   setupMiddleware() {
     this.app.use(helmet());
 
+    // ✅ CORREÇÃO CRÍTICA: CORS melhorado para Flutter Web
     this.app.use((req, res, next) => {
-      // Permite TODAS as origens em desenvolvimento
       const allowedOrigins = [
         "http://localhost:3000",
         "http://localhost:5000",
@@ -59,11 +59,14 @@ class ApiGateway {
         "http://127.0.0.1:8080",
         "http://127.0.0.1:18948",
         "http://127.0.0.1:44965",
+        "http://localhost:65276",
+        "http://127.0.0.1:65276",
       ];
 
       const origin = req.headers.origin;
 
-      if (allowedOrigins.includes(origin)) {
+      // Permite qualquer origem em desenvolvimento
+      if (origin) {
         res.header("Access-Control-Allow-Origin", origin);
       } else {
         res.header("Access-Control-Allow-Origin", "*");
@@ -75,11 +78,12 @@ class ApiGateway {
       );
       res.header(
         "Access-Control-Allow-Headers",
-        "Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+        "Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Requested-With"
       );
       res.header("Access-Control-Allow-Credentials", "true");
-      res.header("Access-Control-Max-Age", "86400"); // 24 hours
+      res.header("Access-Control-Max-Age", "86400");
 
+      // ✅ CORREÇÃO: Handle preflight requests
       if (req.method === "OPTIONS") {
         console.log("✅ Preflight OPTIONS request handled");
         return res.status(200).end();
@@ -89,8 +93,8 @@ class ApiGateway {
     });
 
     this.app.use(morgan("combined"));
-    this.app.use(express.json());
-    this.app.use(express.urlencoded({ extended: true }));
+    this.app.use(express.json({ limit: "10mb" }));
+    this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
     // Service info headers
     this.app.use((req, res, next) => {
@@ -140,22 +144,24 @@ class ApiGateway {
     this.app.get("/api/dashboard", this.getDashboard.bind(this));
     this.app.get("/api/search", this.globalSearch.bind(this));
 
+    // ROTAS CORRIGIDAS - ESPECÍFICAS
+    this.app.use("/api/auth", this.proxyToService("user-service", "/auth"));
+    this.app.use("/api/users", this.proxyToService("user-service", "/users"));
 
-      // ✅ ROTAS CORRIGIDAS - ESPECÍFICAS
-  this.app.use("/api/auth", this.proxyToService("user-service", "/auth"));
-  this.app.use("/api/users", this.proxyToService("user-service", "/users"));
-  
-  // ✅ ROTA ESPECÍFICA PARA BUSCAR LISTAS
-  this.app.get("/api/lists", this.proxyToService("list-service", "/"));
-  
-  // ✅ ROTAS RESTANTES PARA LISTAS (com parâmetros)
-  this.app.use("/api/lists/:id", this.proxyToService("list-service", "/"));
-  
-  // ✅ ROTA PARA CRIAR LISTA (já está funcionando)
-  this.app.post("/api/lists", this.proxyToService("list-service", "/"));
-  
-  this.app.use("/api/items", this.proxyToService("item-service", "/"));
-  
+    // ROTA ESPECÍFICA PARA BUSCAR LISTAS
+    this.app.get("/api/lists", this.proxyToService("list-service", "/"));
+
+    // ROTAS RESTANTES PARA LISTAS (com parâmetros)
+    this.app.use("/api/lists/:id", this.proxyToService("list-service", "/"));
+
+    // ROTA PARA CRIAR LISTA (já está funcionando)
+    this.app.post("/api/lists", this.proxyToService("list-service", "/"));
+
+    // ROTA PARA ADICIONAR ITEM À LISTA
+    this.app.post("/api/lists/:id/items", this.proxyToService("list-service"));
+
+    this.app.use("/api/items", this.proxyToService("item-service", "/"));
+
     // Root endpoint
     this.app.get("/", (req, res) => {
       res.json({
@@ -320,6 +326,13 @@ class ApiGateway {
 
       try {
         const serviceUrl = this.getServiceUrl(serviceName);
+
+        // ✅ CORREÇÃO: Add debug logs AFTER serviceUrl is defined
+        console.log(
+          `🔄 [GATEWAY] Proxying ${req.method} ${req.originalUrl} to ${serviceName}`
+        );
+        console.log(`🔗 Target service URL: ${serviceUrl}`);
+
         if (!serviceUrl) {
           return res.status(503).json({
             success: false,
@@ -354,7 +367,7 @@ class ApiGateway {
         }
 
         const targetUrl = `${serviceUrl}${targetPath}`;
-        console.log(`Proxying to: ${targetUrl}`);
+        console.log(`🎯 Final target URL: ${targetUrl}`);
 
         const response = await axios({
           method: req.method,

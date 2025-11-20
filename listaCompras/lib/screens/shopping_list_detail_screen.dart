@@ -11,7 +11,8 @@ class ShoppingListDetailScreen extends StatefulWidget {
   const ShoppingListDetailScreen({super.key, required this.list});
 
   @override
-  State<ShoppingListDetailScreen> createState() => _ShoppingListDetailScreenState();
+  State<ShoppingListDetailScreen> createState() =>
+      _ShoppingListDetailScreenState();
 }
 
 class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
@@ -22,6 +23,9 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   void initState() {
     super.initState();
     _list = widget.list;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshList();
+    });
   }
 
   Future<void> _refreshList() async {
@@ -32,12 +36,16 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         (l) => l.id == _list.id,
         orElse: () => _list,
       );
+
+      print('🔄 Lista atualizada: ${updatedList.items.length} itens');
+
       setState(() {
         _list = updatedList;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
+      print('❌ Erro ao atualizar lista: $e');
       _showErrorSnackbar('Erro ao atualizar: $e');
     }
   }
@@ -45,9 +53,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   Future<void> _addItem() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => AddItemScreen(listId: _list.id),
-      ),
+      MaterialPageRoute(builder: (context) => AddItemScreen(listId: _list.id)),
     );
 
     if (result == true) {
@@ -102,10 +108,26 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
     if (confirmed == true) {
       try {
+        // ✅ CORREÇÃO: Atualizar a lista localmente primeiro para melhor UX
+        setState(() {
+          _list = _list.copyWith(
+            items: _list.items.where((i) => i.id != item.id).toList(),
+          );
+        });
+
         await ApiService.removeItemFromList(_list.id, item.id);
+
+        // ✅ CORREÇÃO: Recarregar a lista completa do servidor
         await _refreshList();
+
         _showSuccessSnackbar('Item removido');
       } catch (e) {
+        // ✅ CORREÇÃO: Reverter se houver erro
+        setState(() {
+          _list = _list.copyWith(
+            items: [..._list.items, item], // Re-adiciona o item
+          );
+        });
         _showErrorSnackbar('Erro ao remover item: $e');
       }
     }
@@ -145,12 +167,14 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         await ApiService.checkoutList(_list.id);
         await _refreshList();
         _showSuccessSnackbar('Checkout realizado! Processando...');
-        
+
         // Mostrar mensagem sobre processamento assíncrono
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Checkout iniciado! Notificação e analytics em processamento...'),
+              content: Text(
+                '✅ Checkout iniciado! Notificação e analytics em processamento...',
+              ),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
@@ -164,19 +188,13 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   void _showSuccessSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
@@ -204,7 +222,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           ),
         ],
       ),
-      
+
       body: Column(
         children: [
           // Header com estatísticas
@@ -216,96 +234,99 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               children: [
                 _buildStatItem('Total', '${_list.totalItems}'),
                 _buildStatItem('Comprados', '${_list.purchasedItems}'),
-                _buildStatItem('Faltam', '${_list.totalItems - _list.purchasedItems}'),
                 _buildStatItem(
-                  'Total', 
+                  'Faltam',
+                  '${_list.totalItems - _list.purchasedItems}',
+                ),
+                _buildStatItem(
+                  'Total',
                   'R\$${_list.estimatedTotal.toStringAsFixed(2)}',
                   isMoney: true,
                 ),
               ],
             ),
           ),
-          
+
           // Lista de Itens
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _list.items.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _refreshList,
-                        child: CustomScrollView(
-                          slivers: [
-                            // Itens Pendentes
-                            if (pendingItems.isNotEmpty)
-                              SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Text(
-                                    'Itens Pendentes (${pendingItems.length})',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange,
-                                    ),
-                                  ),
+                ? _buildEmptyState()
+                : RefreshIndicator(
+                    onRefresh: _refreshList,
+                    child: CustomScrollView(
+                      slivers: [
+                        // Itens Pendentes
+                        if (pendingItems.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                'Itens Pendentes (${pendingItems.length})',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
                                 ),
                               ),
-                            
-                            SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  final item = pendingItems[index];
-                                  return ShoppingItemCard(
-                                    item: item,
-                                    onToggle: () => _toggleItemPurchase(item),
-                                    onQuantityChange: (newQuantity) => 
-                                        _updateItemQuantity(item, newQuantity),
-                                    onRemove: () => _removeItem(item),
-                                  );
-                                },
-                                childCount: pendingItems.length,
-                              ),
                             ),
-                            
-                            // Itens Comprados
-                            if (purchasedItems.isNotEmpty)
-                              SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Text(
-                                    'Itens Comprados (${purchasedItems.length})',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            
-                            SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  final item = purchasedItems[index];
-                                  return ShoppingItemCard(
-                                    item: item,
-                                    onToggle: () => _toggleItemPurchase(item),
-                                    onQuantityChange: (newQuantity) => 
-                                        _updateItemQuantity(item, newQuantity),
-                                    onRemove: () => _removeItem(item),
-                                  );
-                                },
-                                childCount: purchasedItems.length,
-                              ),
-                            ),
-                          ],
+                          ),
+
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final item = pendingItems[index];
+                            return ShoppingItemCard(
+                              item: item,
+                              onToggle: () => _toggleItemPurchase(item),
+                              onQuantityChange: (newQuantity) =>
+                                  _updateItemQuantity(item, newQuantity),
+                              onRemove: () => _removeItem(item),
+                            );
+                          }, childCount: pendingItems.length),
                         ),
-                      ),
+
+                        // Itens Comprados
+                        if (purchasedItems.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                'Itens Comprados (${purchasedItems.length})',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final item = purchasedItems[index];
+                            return ShoppingItemCard(
+                              item: item,
+                              onToggle: () => _toggleItemPurchase(item),
+                              onQuantityChange: (newQuantity) =>
+                                  _updateItemQuantity(item, newQuantity),
+                              onRemove: () => _removeItem(item),
+                            );
+                          }, childCount: purchasedItems.length),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
-      
+
       floatingActionButton: _list.status == 'active'
           ? FloatingActionButton(
               onPressed: _addItem,
@@ -328,13 +349,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             color: isMoney ? Colors.green : Colors.blue,
           ),
         ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
   }
@@ -344,24 +359,21 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.shopping_basket_outlined, 
-              size: 100, color: Colors.grey.shade300),
+          Icon(
+            Icons.shopping_basket_outlined,
+            size: 100,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 16),
           const Text(
             'Lista Vazia',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey),
           ),
           const SizedBox(height: 8),
           const Text(
             'Adicione itens para começar suas compras',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(

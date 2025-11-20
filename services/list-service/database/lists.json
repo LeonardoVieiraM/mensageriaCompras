@@ -15,18 +15,53 @@
     "updatedAt": "2025-11-19T19:11:15.251Z"
   },
   {
-    "id": "af1adbc3-8416-4ebe-a57c-56fd3f273391",
+    "id": "22e96bea-012d-4909-8c7d-ab7b61c57f73",
     "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
     "name": "compras",
     "description": "",
-    "status": "active",
-    "items": [],
+    "status": "completed",
+    "items": [
+      {
+        "itemId": "0c38fbef-fcf2-4980-b7ec-2d5912930635",
+        "itemName": "Arroz",
+        "quantity": 1,
+        "unit": "kg",
+        "estimatedPrice": 5.99,
+        "purchased": true,
+        "notes": "",
+        "addedAt": "2025-11-20T13:17:34.607Z",
+        "updatedAt": "2025-11-20T13:17:55.297Z"
+      },
+      {
+        "itemId": "e1251bf6-1c31-45a9-bbda-2e14cfd459e2",
+        "itemName": "Cerveja",
+        "quantity": 1,
+        "unit": "ml",
+        "estimatedPrice": 3.49,
+        "purchased": true,
+        "notes": "",
+        "addedAt": "2025-11-20T13:17:42.078Z",
+        "updatedAt": "2025-11-20T13:17:57.387Z"
+      },
+      {
+        "itemId": "a1b00174-c3ba-4b9c-91f3-31854c5b2ee2",
+        "itemName": "Sabão em Pó",
+        "quantity": 1,
+        "unit": "kg",
+        "estimatedPrice": 15.9,
+        "purchased": true,
+        "notes": "",
+        "addedAt": "2025-11-20T13:17:51.945Z",
+        "updatedAt": "2025-11-20T13:17:57.991Z"
+      }
+    ],
     "summary": {
-      "totalItems": 0,
-      "purchasedItems": 0,
-      "estimatedTotal": 0
+      "totalItems": 3,
+      "purchasedItems": 3,
+      "estimatedTotal": 25.38
     },
-    "createdAt": "2025-11-19T20:32:14.866Z",
-    "updatedAt": "2025-11-19T20:32:14.866Z"
+    "createdAt": "2025-11-20T13:17:28.674Z",
+    "updatedAt": "2025-11-20T13:18:02.220Z",
+    "completedAt": "2025-11-20T13:18:02.220Z"
   }
 ]

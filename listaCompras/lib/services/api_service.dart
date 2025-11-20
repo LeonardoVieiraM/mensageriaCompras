@@ -2,9 +2,17 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/shopping_list.dart';
 import '../models/shopping_item.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3000/api';
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:3000/api';
+    } else {
+      return 'http://localhost:3000/api';
+    }
+  }
+
   static String? _authToken;
 
   static void setAuthToken(String token) {
@@ -13,7 +21,10 @@ class ApiService {
   }
 
   static Map<String, String> get _headers {
-    final headers = {'Content-Type': 'application/json'};
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
     if (_authToken != null) {
       headers['Authorization'] = 'Bearer $_authToken';
     }
@@ -24,7 +35,6 @@ class ApiService {
 
   static Future<List<ShoppingList>> getShoppingLists() async {
     try {
-      // ✅ USA A NOVA ROTA /user-lists DO LIST SERVICE DIRETAMENTE
       final url = 'http://localhost:3002/user-lists';
       print('🔄 [LIST-SERVICE] Buscando listas de: $url');
 
@@ -41,13 +51,16 @@ class ApiService {
         if (data is Map && data['success'] == true) {
           if (data['data'] is List) {
             final listsData = data['data'] as List<dynamic>;
+            print('✅ Encontradas ${listsData.length} listas no total');
+
             final lists = listsData.map((listData) {
               return ShoppingList.fromMap(listData as Map<String, dynamic>);
             }).toList();
-            print('✅ Listas carregadas: ${lists.length}');
+
+            print('✅ Listas convertidas: ${lists.length}');
             return lists;
           } else {
-            print('⚠️ Data não é uma lista');
+            print('⚠️ Data não é uma lista, é: ${data['data']?.runtimeType}');
             return [];
           }
         } else {
@@ -147,16 +160,38 @@ class ApiService {
     throw Exception('Falha na busca de produtos');
   }
 
-  static Future<List<Map<String, dynamic>>> getCategories() async {
-    final response = await http.get(Uri.parse('$baseUrl/items/categories'));
+  static Future<List<String>> getCategories() async {
+    try {
+      print('🔄 [GATEWAY] Buscando categorias...');
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data['success'] == true) {
-        return List<Map<String, dynamic>>.from(data['data']);
+      final response = await http
+          .get(Uri.parse('$baseUrl/items/categories'), headers: _headers)
+          .timeout(const Duration(seconds: 10));
+
+      print('📡 [GATEWAY] Categories Status: ${response.statusCode}');
+      print('📡 [GATEWAY] Categories Response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          // ✅ CORREÇÃO: API retorna List<String>, não List<Map>
+          if (data['data'] is List) {
+            final categories = List<String>.from(data['data']);
+            print('✅ Categorias carregadas: ${categories.length}');
+            return categories;
+          } else {
+            throw Exception('Formato de categorias inválido');
+          }
+        } else {
+          throw Exception('Falha ao carregar categorias: ${data['message']}');
+        }
+      } else {
+        throw Exception('HTTP Error ${response.statusCode}');
       }
+    } catch (e) {
+      print('❌ Erro ao carregar categorias: $e');
+      rethrow;
     }
-    throw Exception('Falha ao carregar categorias');
   }
 
   // ========== LIST ITEMS OPERATIONS ==========
@@ -165,46 +200,83 @@ class ApiService {
     String listId,
     ShoppingItem item,
   ) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/lists/$listId/items'),
-      headers: _headers,
-      body: json.encode({
-        'itemId': item.productId,
-        'quantity': item.quantity,
-        'notes': item.notes,
-      }),
-    );
+    try {
+      print('🔄 [GATEWAY] Adicionando item à lista: $listId');
 
-    if (response.statusCode == 201) {
-      final data = json.decode(response.body);
-      if (data['success'] == true) {
-        return ShoppingList.fromMap(data['data']);
+      final response = await http.post(
+        Uri.parse('$baseUrl/lists/$listId/items'),
+        headers: _headers,
+        body: json.encode({
+          'itemId': item.productId,
+          'quantity': item.quantity,
+          'notes': item.notes,
+        }),
+      );
+
+      print('📡 [GATEWAY] Add Item Status: ${response.statusCode}');
+      print('📡 [GATEWAY] Add Item Response: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          print('✅ Item adicionado com sucesso!');
+
+          // ✅ CORREÇÃO: Verificar se data['data'] existe
+          if (data['data'] != null) {
+            return ShoppingList.fromMap(data['data'] as Map<String, dynamic>);
+          } else {
+            throw Exception('Dados da resposta estão vazios');
+          }
+        } else {
+          throw Exception('Add item failed: ${data['message']}');
+        }
+      } else {
+        throw Exception('HTTP Error ${response.statusCode}');
       }
+    } catch (e) {
+      print('❌ Erro ao adicionar item: $e');
+      rethrow;
     }
-    throw Exception('Falha ao adicionar item à lista');
   }
 
   static Future<ShoppingList> updateItemInList(
     String listId,
     ShoppingItem item,
   ) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/lists/$listId/items/${item.id}'),
-      headers: _headers,
-      body: json.encode({
-        'quantity': item.quantity,
-        'purchased': item.purchased,
-        'notes': item.notes,
-      }),
-    );
+    try {
+      print('🔄 [GATEWAY] Atualizando item na lista: $listId');
+      print('📦 Item ID: ${item.id}');
+      print('📦 Item quantity: ${item.quantity}');
+      print('📦 Item purchased: ${item.purchased}');
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data['success'] == true) {
-        return ShoppingList.fromMap(data['data']);
+      final response = await http.put(
+        Uri.parse('$baseUrl/lists/$listId/items/${item.id}'),
+        headers: _headers,
+        body: json.encode({
+          'quantity': item.quantity,
+          'purchased': item.purchased,
+          'notes': item.notes,
+        }),
+      );
+
+      print('📡 [GATEWAY] Update Item Status: ${response.statusCode}');
+      print('📡 [GATEWAY] Update Item Response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          print('✅ Item atualizado com sucesso!');
+          return ShoppingList.fromMap(data['data'] as Map<String, dynamic>);
+        } else {
+          throw Exception('Update failed: ${data['message']}');
+        }
+      } else {
+        throw Exception('HTTP Error ${response.statusCode}');
       }
+    } catch (e) {
+      print('❌ Erro ao atualizar item: $e');
+      rethrow;
     }
-    throw Exception('Falha ao atualizar item');
   }
 
   static Future<ShoppingList> removeItemFromList(

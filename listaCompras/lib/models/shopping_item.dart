@@ -18,7 +18,7 @@ class ShoppingItem {
     String? id,
     required this.productId,
     required this.name,
-    required this.category,
+    this.category = '',
     this.brand = '',
     required this.price,
     this.quantity = 1,
@@ -41,7 +41,7 @@ class ShoppingItem {
       'price': price,
       'quantity': quantity,
       'unit': unit,
-      'purchased': purchased ? 1 : 0,
+      'purchased': purchased,
       'notes': notes,
       'addedAt': addedAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -50,19 +50,30 @@ class ShoppingItem {
 
   factory ShoppingItem.fromMap(Map<String, dynamic> map) {
     try {
+      print('🔄 [SHOPPING-ITEM] Convertendo map para ShoppingItem');
+      print('📦 Map data: $map');
+
+      String itemId =
+          map['id'] as String? ?? map['itemId'] as String? ?? const Uuid().v4();
+
       return ShoppingItem(
-        id: map['id'] as String,
-        productId: map['productId'] as String,
-        name: map['name'] as String,
-        category: map['category'] as String,
+        id: itemId, 
+        productId:
+            map['itemId'] as String? ?? map['productId'] as String? ?? '',
+        name: map['itemName'] as String? ?? map['name'] as String? ?? '',
+        category: map['category'] as String? ?? '',
         brand: map['brand'] as String? ?? '',
-        price: (map['price'] ?? 0.0).toDouble(),
+        price: (map['estimatedPrice'] ?? map['price'] ?? 0.0).toDouble(),
         quantity: (map['quantity'] ?? 1).toInt(),
         unit: map['unit'] as String? ?? 'un',
         purchased: map['purchased'] == true || map['purchased'] == 1,
         notes: map['notes'] as String? ?? '',
-        addedAt: DateTime.parse(map['addedAt'] as String),
-        updatedAt: DateTime.parse(map['updatedAt'] as String),
+        addedAt: map['addedAt'] != null
+            ? DateTime.parse(map['addedAt'] as String)
+            : DateTime.now(),
+        updatedAt: map['updatedAt'] != null
+            ? DateTime.parse(map['updatedAt'] as String)
+            : DateTime.now(),
       );
     } catch (e) {
       print('❌ Erro no fromMap ShoppingItem: $e');

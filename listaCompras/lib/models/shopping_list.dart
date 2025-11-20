@@ -40,6 +40,9 @@ class ShoppingList {
 
   factory ShoppingList.fromMap(Map<String, dynamic> map) {
     try {
+      print('🔄 [SHOPPING-LIST] Convertendo map para ShoppingList');
+      print('📦 Map data: $map');
+      
       // ✅ Converte items de List<dynamic> para List<ShoppingItem>
       List<ShoppingItem> items = [];
       if (map['items'] != null) {
@@ -47,17 +50,23 @@ class ShoppingList {
         items = itemsData.map((itemData) {
           return ShoppingItem.fromMap(itemData as Map<String, dynamic>);
         }).toList();
+        print('✅ Convertidos ${items.length} items');
       }
 
       return ShoppingList(
-        id: map['id'] as String,
-        name: map['name'] as String,
+        id: map['id'] as String? ?? const Uuid().v4(),
+        name: map['name'] as String? ?? '',
         description: map['description'] as String? ?? '',
         status: map['status'] as String? ?? 'active',
-        createdAt: DateTime.parse(map['createdAt'] as String),
-        updatedAt: DateTime.parse(map['updatedAt'] as String),
+        createdAt: map['createdAt'] != null 
+            ? DateTime.parse(map['createdAt'] as String)
+            : DateTime.now(),
+        updatedAt: map['updatedAt'] != null
+            ? DateTime.parse(map['updatedAt'] as String)
+            : DateTime.now(),
         items: items,
-        estimatedTotal: (map['estimatedTotal'] ?? 0.0).toDouble(),
+        estimatedTotal: (map['estimatedTotal'] ?? 
+                        map['summary']?['estimatedTotal'] ?? 0.0).toDouble(),
       );
     } catch (e) {
       print('❌ Erro no fromMap ShoppingList: $e');

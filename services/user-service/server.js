@@ -163,7 +163,7 @@ class UserService {
   }
 
   // Auth middleware
-  authMiddleware(req, res, next) {
+  async authMiddleware(req, res, next) {
     const authHeader = req.header("Authorization");
 
     if (!authHeader?.startsWith("Bearer ")) {
@@ -173,16 +173,25 @@ class UserService {
       });
     }
 
-    const token = authHeader.replace("Bearer ", "");
-
     try {
+      const token = authHeader.replace("Bearer ", "");
+
+      console.log("🔐 [USER-SERVICE] Validando token...");
+
       const decoded = jwt.verify(
         token,
         process.env.JWT_SECRET || "user-secret"
       );
+
+      console.log("✅ [USER-SERVICE] Token válido para usuário:", decoded.id);
+
       req.user = decoded;
       next();
     } catch (error) {
+      console.error(
+        "❌ [USER-SERVICE] Erro na validação do token:",
+        error.message
+      );
       res.status(401).json({
         success: false,
         message: "Token inválido",

@@ -96,10 +96,8 @@ class ListService {
       });
     });
 
-    // ✅ MIDDLEWARE DE AUTH PARA TODAS AS ROTAS SEGUINTES
+    // MIDDLEWARE DE AUTH PARA TODAS AS ROTAS SEGUINTES
     this.app.use(this.authMiddleware.bind(this));
-
-    // ✅ ROTAS AUTENTICADAS - SEM DUPLICATAS
 
     // Rotas de Listas
     this.app.post("/", this.createList.bind(this)); // POST / - Criar lista
@@ -240,10 +238,12 @@ class ListService {
   async getLists(req, res) {
     try {
       const { status } = req.query;
+      const userId = req.user.id;
 
-      const filter = { userId: req.user.id };
+      console.log("🔍 [LIST-SERVICE] Buscando listas para usuário:", userId);
 
-      // Filtrar por status se fornecido
+      const filter = { userId: userId };
+
       if (status) {
         filter.status = status;
       }
@@ -251,6 +251,10 @@ class ListService {
       const lists = await this.listsDb.find(filter, {
         sort: { updatedAt: -1 },
       });
+
+      console.log(
+        `✅ [LIST-SERVICE] Encontradas ${lists.length} listas para usuário ${userId}`
+      );
 
       res.json({
         success: true,
@@ -413,8 +417,8 @@ class ListService {
       // Buscar informações do item no Item Service
       let itemInfo;
       try {
-        const itemService = serviceRegistry.discover("item-service");
-        const response = await axios.get(`${itemService.url}/items/${itemId}`, {
+        const itemServiceUrl = "http://localhost:3003";
+        const response = await axios.get(`${itemServiceUrl}/items/${itemId}`, {
           timeout: 5000,
         });
 
@@ -621,10 +625,13 @@ class ListService {
       });
     }
   }
+
   async checkoutList(req, res) {
     try {
       const { id } = req.params;
       const userId = req.user.id;
+
+      console.log("🛒 [LIST-SERVICE] Iniciando checkout para lista:", id);
 
       // Buscar lista
       const list = await this.listsDb.findById(id);
@@ -635,7 +642,13 @@ class ListService {
         });
       }
 
-      // Publicar mensagem no RabbitMQ
+      if (list.items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Lista vazia - adicione itens antes do checkout",
+        });
+      }
+
       const message = {
         listId: id,
         userId: userId,
@@ -646,23 +659,40 @@ class ListService {
         timestamp: new Date().toISOString(),
       };
 
-      // Publicar mensagem (implementação abaixo)
+      console.log(
+        "📤 [LIST-SERVICE] Publicando evento de checkout no RabbitMQ:",
+        {
+          listId: id,
+          items: list.items.length,
+          total: message.total,
+        }
+      );
+
+      // Publicar mensagem no RabbitMQ
       await this.publishCheckoutEvent(message);
 
-      // Atualizar status da lista
-      await this.listsDb.update(id, {
+      // Atualizar status da lista para "completed"
+      const updatedList = await this.listsDb.update(id, {
         status: "completed",
         completedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
+
+      console.log("✅ [LIST-SERVICE] Checkout concluído para lista:", id);
 
       // Retornar 202 Accepted imediatamente
       res.status(202).json({
         success: true,
         message: "Checkout iniciado. Processando em background...",
-        data: { listId: id },
+        data: {
+          listId: id,
+          status: "completed",
+          itemsProcessed: list.items.length,
+          total: message.total,
+        },
       });
     } catch (error) {
-      console.error("Erro no checkout:", error);
+      console.error("❌ [LIST-SERVICE] Erro no checkout:", error);
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
@@ -674,15 +704,31 @@ class ListService {
   async publishCheckoutEvent(message) {
     try {
       const rabbitmqService = require("../../shared/rabbitmqService");
+
+      console.log("🐰 [LIST-SERVICE] Conectando ao RabbitMQ...");
+
+      // Garantir que está conectado
+      if (!rabbitmqService.isConnected) {
+        await rabbitmqService.connect();
+      }
+
+      console.log("📤 [LIST-SERVICE] Publicando mensagem...");
+
       await rabbitmqService.publish(
         "shopping_events",
         "list.checkout.completed",
         message
       );
-      console.log(`Evento de checkout publicado: ${message.listId}`);
+
+      console.log(
+        "✅ [LIST-SERVICE] Evento de checkout publicado com sucesso!"
+      );
+      console.log("   Lista ID:", message.listId);
+      console.log("   Itens:", message.items.length);
+      console.log("   Total: R$", message.total);
     } catch (error) {
-      console.error("Erro ao publicar evento:", error);
-      // Não falhar o checkout se o RabbitMQ estiver indisponível
+      console.error("❌ [LIST-SERVICE] Erro ao publicar evento:", error);
+      console.log("⚠️ [LIST-SERVICE] Checkout concluído sem RabbitMQ");
     }
   }
 
