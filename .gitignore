@@ -5,3 +5,12 @@
 /services/list-service/node_modules
 /services/user-service/node_modules
 shared/service-registry.json
+/listaCompras/build
+/listaCompras/windows
+/listaCompras/.dart_tool
+/listaCompras/.idea
+/listaCompras/ios/Runner
+/listaCompras/macos
+/listaCompras/android
+/listaCompras/linux
+/listaCompras/ios
