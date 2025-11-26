@@ -14,7 +14,6 @@ class JsonDatabase {
         const data = fs.readFileSync(this.filePath, "utf8");
         this.collection = JSON.parse(data);
       } else {
-        // Create directory if it doesn't exist
         fs.ensureDirSync(path.dirname(this.filePath));
         this.save();
       }
@@ -39,18 +38,16 @@ class JsonDatabase {
   }
 
   async find(filter = {}, options = {}) {
-    console.log("🔍 JsonDatabase find:");
+    console.log("JsonDatabase find:");
     console.log("Filter:", JSON.stringify(filter, null, 2));
     console.log("Options:", options);
 
     let results = [...this.collection];
 
-    // Apply filters
     if (Object.keys(filter).length > 0) {
       results = results.filter((item) => {
         for (const key in filter) {
           if (key.startsWith("$")) {
-            // Handle special operators
             if (key === "$or") {
               const orConditions = filter[key];
               const orMatch = orConditions.some((condition) => {
@@ -63,10 +60,9 @@ class JsonDatabase {
               });
               if (!orMatch) return false;
             } else if (key === "$regex") {
-              // ✅ CORRIGIDO: Regex filter
               const regexPattern = filter[key];
               const regexOptions = filter.$options || "i";
-              const field = filter.$field || "name"; // default field
+              const field = filter.$field || "name";
 
               const regex = new RegExp(regexPattern, regexOptions);
               if (!regex.test(item[field])) {
@@ -81,7 +77,6 @@ class JsonDatabase {
       });
     }
 
-    // Apply sorting
     if (options.sort) {
       const sortKey = Object.keys(options.sort)[0];
       const sortDirection = options.sort[sortKey];
@@ -92,7 +87,6 @@ class JsonDatabase {
       });
     }
 
-    // Apply pagination
     if (options.skip) {
       results = results.slice(options.skip);
     }

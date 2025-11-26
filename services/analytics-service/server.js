@@ -50,13 +50,13 @@ class AnalyticsService {
         this.handleCheckoutEvent.bind(this)
       );
     } catch (error) {
-      console.error("❌ Erro ao iniciar consumer:", error);
+      console.error("Erro ao iniciar consumer:", error);
       setTimeout(() => this.startConsumer(), 5000);
     }
   }
 
   async handleCheckoutEvent(message) {
-    console.log(`\n📊 [ANALYTICS-SERVICE] PROCESSANDO ANALYTICS:`);
+    console.log(`\n[ANALYTICS-SERVICE] PROCESSANDO ANALYTICS:`);
     console.log(`   Lista: ${message.listId}`);
     console.log(`   Valor: R$ ${message.total}`);
     console.log(`   Itens: ${message.items.length}`);
@@ -69,14 +69,14 @@ class AnalyticsService {
     this.stats.lastCheckout = message.timestamp;
 
     // Simular processamento de analytics
-    console.log("⏳ [ANALYTICS-SERVICE] Processando analytics...");
+    console.log("[ANALYTICS-SERVICE] Processando analytics...");
     await this.delay(800);
 
-    console.log("✅ [ANALYTICS-SERVICE] Estatísticas atualizadas:");
+    console.log("[ANALYTICS-SERVICE] Estatísticas atualizadas:");
     console.log(`   - Total de checkouts: ${this.stats.totalCheckouts}`);
     console.log(`   - Receita total: R$ ${this.stats.totalRevenue.toFixed(2)}`);
     console.log(`   - Ticket médio: R$ ${this.stats.averageTicket.toFixed(2)}`);
-    console.log("✅ Analytics atualizado!\n");
+    console.log("Analytics atualizado!\n");
   }
 
   delay(ms) {

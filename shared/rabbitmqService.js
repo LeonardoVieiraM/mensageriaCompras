@@ -16,23 +16,21 @@ class RabbitMQService {
             this.connection = await amqp.connect(this.url);
             this.channel = await this.connection.createChannel();
             
-            // Declarar exchange
             await this.channel.assertExchange('shopping_events', 'topic', {
                 durable: true
             });
 
             this.isConnected = true;
-            console.log('✅ Conectado ao RabbitMQ');
+            console.log('Conectado ao RabbitMQ');
 
-            // Tratar fechamento de conexão
             this.connection.on('close', () => {
                 this.isConnected = false;
-                console.log('❌ Conexão RabbitMQ fechada');
+                console.log('Conexão RabbitMQ fechada');
                 setTimeout(() => this.connect(), 5000);
             });
 
         } catch (error) {
-            console.error('❌ Erro ao conectar RabbitMQ:', error.message);
+            console.error('Erro ao conectar RabbitMQ:', error.message);
             setTimeout(() => this.connect(), 5000);
         }
     }
@@ -51,12 +49,12 @@ class RabbitMQService {
             );
             
             if (result) {
-                console.log(`📤 Mensagem publicada: ${exchange} -> ${routingKey}`);
+                console.log(`Mensagem publicada: ${exchange} -> ${routingKey}`);
             } else {
                 throw new Error('Falha ao publicar mensagem');
             }
         } catch (error) {
-            console.error('❌ Erro ao publicar mensagem:', error);
+            console.error('Erro ao publicar mensagem:', error);
             throw error;
         }
     }
@@ -67,36 +65,32 @@ class RabbitMQService {
         }
 
         try {
-            // Declarar fila
             const q = await this.channel.assertQueue(queue, {
                 durable: true
             });
 
-            // Vincular fila ao exchange
             await this.channel.bindQueue(q.queue, 'shopping_events', routingKey);
 
-            console.log(`👂 Consumer aguardando mensagens: ${queue} [${routingKey}]`);
+            console.log(`Consumer aguardando mensagens: ${queue} [${routingKey}]`);
 
             await this.channel.consume(q.queue, async (msg) => {
                 if (msg !== null) {
                     try {
                         const content = JSON.parse(msg.content.toString());
-                        console.log(`📥 Mensagem recebida: ${routingKey}`);
+                        console.log(`Mensagem recebida: ${routingKey}`);
                         
                         await callback(content);
                         
-                        // Ack da mensagem
                         this.channel.ack(msg);
                     } catch (error) {
-                        console.error('❌ Erro ao processar mensagem:', error);
-                        // Rejeitar mensagem (não reenfileirar)
+                        console.error('Erro ao processar mensagem:', error);
                         this.channel.nack(msg, false, false);
                     }
                 }
             });
 
         } catch (error) {
-            console.error('❌ Erro ao configurar consumer:', error);
+            console.error('Erro ao configurar consumer:', error);
             throw error;
         }
     }
@@ -108,5 +102,4 @@ class RabbitMQService {
     }
 }
 
-// Singleton
 module.exports = new RabbitMQService();

@@ -69,10 +69,10 @@ class ServiceRegistry {
       };
 
       await this.#writeRegistry(services);
-      console.log(`✅ Serviço ${serviceName} registrado com sucesso!`);
+      console.log(`Serviço ${serviceName} registrado com sucesso!`);
       return true;
     } catch (error) {
-      console.error(`❌ Erro ao registrar ${serviceName}:`, error.message);
+      console.error(`Erro ao registrar ${serviceName}:`, error.message);
       console.error(error.stack);
       return false;
     }
@@ -132,12 +132,12 @@ class ServiceRegistry {
     try {
       const services = await this.#readRegistry();
       console.log(
-        "🔄 getAllServices - Services no registry:",
+        "getAllServices - Services no registry:",
         Object.keys(services)
       );
       return services;
     } catch (error) {
-      console.error("❌ Erro ao obter todos os serviços:", error.message);
+      console.error("Erro ao obter todos os serviços:", error.message);
       console.error(error.stack);
       return {};
     }
@@ -149,12 +149,12 @@ class ServiceRegistry {
       if (services[serviceName]) {
         delete services[serviceName];
         await this.#writeRegistry(services);
-        console.log(`✅ Serviço ${serviceName} removido do registry`);
+        console.log(`Serviço ${serviceName} removido do registry`);
         return true;
       }
       return false;
     } catch (error) {
-      console.error("❌ Erro ao remover serviço:", error.message);
+      console.error("Erro ao remover serviço:", error.message);
       return false;
     }
   }
@@ -188,10 +188,8 @@ class ServiceRegistry {
   }
 }
 
-// Singleton instance
 const serviceRegistry = new ServiceRegistry();
 
-// Limpeza regular de serviços inativos
 setInterval(() => {
   serviceRegistry.cleanup();
 }, 60000);

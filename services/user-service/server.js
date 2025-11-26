@@ -7,7 +7,6 @@ const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 
-// Importar banco NoSQL e service registry
 const JsonDatabase = require("../../shared/JsonDatabase");
 const serviceRegistry = require("../../shared/serviceRegistry");
 
@@ -34,7 +33,6 @@ class UserService {
   }
 
   async seedInitialData() {
-    // Aguardar inicialização e criar usuário admin se não existir
     setTimeout(async () => {
       try {
         const existingUsers = await this.usersDb.find();
@@ -74,7 +72,6 @@ class UserService {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
-    // Service info headers
     this.app.use((req, res, next) => {
       res.setHeader("X-Service", this.serviceName);
       res.setHeader("X-Service-Version", "1.0.0");
@@ -84,7 +81,6 @@ class UserService {
   }
 
   setupRoutes() {
-    // Health check
     this.app.get("/health", async (req, res) => {
       try {
         const userCount = await this.usersDb.count();
@@ -108,7 +104,6 @@ class UserService {
       }
     });
 
-    // Service info
     this.app.get("/", (req, res) => {
       res.json({
         service: "User Service",
@@ -125,12 +120,10 @@ class UserService {
       });
     });
 
-    // Auth routes
     this.app.post("/auth/register", this.register.bind(this));
     this.app.post("/auth/login", this.login.bind(this));
     this.app.post("/auth/validate", this.validateToken.bind(this));
 
-    // User routes - CORRIGIDO: sem /api prefix
     this.app.get(
       "/users/:id",
       this.authMiddleware.bind(this),
@@ -162,7 +155,6 @@ class UserService {
     });
   }
 
-  // Auth middleware
   async authMiddleware(req, res, next) {
     const authHeader = req.header("Authorization");
 
@@ -176,20 +168,20 @@ class UserService {
     try {
       const token = authHeader.replace("Bearer ", "");
 
-      console.log("🔐 [USER-SERVICE] Validando token...");
+      console.log("[USER-SERVICE] Validando token...");
 
       const decoded = jwt.verify(
         token,
         process.env.JWT_SECRET || "user-secret"
       );
 
-      console.log("✅ [USER-SERVICE] Token válido para usuário:", decoded.id);
+      console.log("[USER-SERVICE] Token válido para usuário:", decoded.id);
 
       req.user = decoded;
       next();
     } catch (error) {
       console.error(
-        "❌ [USER-SERVICE] Erro na validação do token:",
+        "[USER-SERVICE] Erro na validação do token:",
         error.message
       );
       res.status(401).json({
@@ -199,13 +191,11 @@ class UserService {
     }
   }
 
-  // Register user
   async register(req, res) {
     try {
       const { email, username, password, firstName, lastName, preferences } =
         req.body;
 
-      // Validações básicas
       if (!email || !username || !password || !firstName || !lastName) {
         return res.status(400).json({
           success: false,
@@ -214,7 +204,6 @@ class UserService {
         });
       }
 
-      // Verificar se usuário já existe
       const existingEmail = await this.usersDb.findOne({
         email: email.toLowerCase(),
       });
@@ -236,10 +225,8 @@ class UserService {
         });
       }
 
-      // Hash password
       const hashedPassword = await bcrypt.hash(password, 12);
 
-      // Criar usuário
       const newUser = await this.usersDb.create({
         id: uuidv4(),
         email: email.toLowerCase(),
@@ -284,7 +271,6 @@ class UserService {
     }
   }
 
-  // Login user
   async login(req, res) {
     try {
       const { identifier, password } = req.body;
@@ -310,7 +296,6 @@ class UserService {
         });
       }
 
-      // Verificar se usuário está ativo
       if (user.status !== "active") {
         return res.status(403).json({
           success: false,
@@ -318,7 +303,6 @@ class UserService {
         });
       }
 
-      // Atualizar dados de login
       await this.usersDb.update(user.id, {
         updatedAt: new Date().toISOString(),
       });
@@ -350,7 +334,6 @@ class UserService {
     }
   }
 
-  // Validate token
   async validateToken(req, res) {
     try {
       const { token } = req.body;
@@ -390,7 +373,6 @@ class UserService {
     }
   }
 
-  // Get user by ID
   async getUser(req, res) {
     try {
       const { id } = req.params;
@@ -403,7 +385,6 @@ class UserService {
         });
       }
 
-      // Verificar permissão (usuário só vê próprio perfil ou admin vê tudo)
       if (req.user.id !== id && req.user.role !== "admin") {
         return res.status(403).json({
           success: false,
@@ -426,13 +407,11 @@ class UserService {
     }
   }
 
-  // Update user
   async updateUser(req, res) {
     try {
       const { id } = req.params;
       const { firstName, lastName, email, preferences } = req.body;
 
-      // Verificar permissão
       if (req.user.id !== id && req.user.role !== "admin") {
         return res.status(403).json({
           success: false,
@@ -448,7 +427,6 @@ class UserService {
         });
       }
 
-      // Updates
       const updates = {};
       if (firstName) updates.firstName = firstName;
       if (lastName) updates.lastName = lastName;
@@ -475,7 +453,6 @@ class UserService {
     }
   }
 
-  // Register with service registry
   registerWithRegistry() {
     serviceRegistry.register(this.serviceName, {
       url: this.serviceUrl,
@@ -485,7 +462,6 @@ class UserService {
     });
   }
 
-  // Start health check reporting
   startHealthReporting() {
     setInterval(() => {
       serviceRegistry.updateHealth(this.serviceName, true);
@@ -501,7 +477,6 @@ class UserService {
       console.log(`Database: JSON-NoSQL`);
       console.log("=====================================");
 
-      // Register with service registry
       setTimeout(() => {
         this.registerWithRegistry();
         this.startHealthReporting();
@@ -510,14 +485,12 @@ class UserService {
   }
 }
 
-// Start service
 if (require.main === module) {
   const userService = new UserService();
   userService.start();
 
-  // Graceful shutdown
   process.on("SIGTERM", async () => {
-    console.log(`🛑 Encerrando ${this.serviceName}...`);
+    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }
@@ -525,7 +498,7 @@ if (require.main === module) {
   });
 
   process.on("SIGINT", async () => {
-    console.log(`🛑 Encerrando ${this.serviceName}...`);
+    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }

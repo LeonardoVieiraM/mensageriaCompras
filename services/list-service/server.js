@@ -7,7 +7,6 @@ const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 const axios = require("axios");
 
-// Importar banco NoSQL e service registry
 const JsonDatabase = require("../../shared/JsonDatabase");
 const serviceRegistry = require("../../shared/serviceRegistry");
 
@@ -38,7 +37,6 @@ class ListService {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
-    // Service info headers
     this.app.use((req, res, next) => {
       res.setHeader("X-Service", this.serviceName);
       res.setHeader("X-Service-Version", "1.0.0");
@@ -48,7 +46,6 @@ class ListService {
   }
 
   setupRoutes() {
-    // Health check
     this.app.get("/health", async (req, res) => {
       try {
         const listCount = await this.listsDb.count();
@@ -75,7 +72,6 @@ class ListService {
       }
     });
 
-    // Service info (rota pública)
     this.app.get("/", (req, res) => {
       res.json({
         service: "List Service",
@@ -96,24 +92,20 @@ class ListService {
       });
     });
 
-    // MIDDLEWARE DE AUTH PARA TODAS AS ROTAS SEGUINTES
     this.app.use(this.authMiddleware.bind(this));
 
-    // Rotas de Listas
-    this.app.post("/", this.createList.bind(this)); // POST / - Criar lista
-    this.app.get("/user-lists", this.getLists.bind(this)); // GET /user-lists - Buscar TODAS as listas do usuário
-    this.app.get("/:id", this.getList.bind(this)); // GET /:id - Buscar lista específica
-    this.app.put("/:id", this.updateList.bind(this)); // PUT /:id - Atualizar lista
-    this.app.delete("/:id", this.deleteList.bind(this)); // DELETE /:id - Excluir lista
+    this.app.post("/", this.createList.bind(this));
+    this.app.get("/user-lists", this.getLists.bind(this));
+    this.app.get("/:id", this.getList.bind(this)); 
+    this.app.put("/:id", this.updateList.bind(this)); 
+    this.app.delete("/:id", this.deleteList.bind(this)); 
 
-    // Rotas de Itens
-    this.app.post("/:id/items", this.addItemToList.bind(this)); // POST /:id/items - Adicionar item
-    this.app.put("/:id/items/:itemId", this.updateItemInList.bind(this)); // PUT /:id/items/:itemId - Atualizar item
-    this.app.delete("/:id/items/:itemId", this.removeItemFromList.bind(this)); // DELETE /:id/items/:itemId - Remover item
+    this.app.post("/:id/items", this.addItemToList.bind(this)); 
+    this.app.put("/:id/items/:itemId", this.updateItemInList.bind(this)); 
+    this.app.delete("/:id/items/:itemId", this.removeItemFromList.bind(this)); 
 
-    // Rotas de Resumo e Checkout
-    this.app.get("/:id/summary", this.getListSummary.bind(this)); // GET /:id/summary - Resumo da lista
-    this.app.post("/:id/checkout", this.checkoutList.bind(this)); // POST /:id/checkout - Finalizar compra
+    this.app.get("/:id/summary", this.getListSummary.bind(this)); 
+    this.app.post("/:id/checkout", this.checkoutList.bind(this)); 
   }
 
   setupErrorHandling() {
@@ -135,7 +127,6 @@ class ListService {
     });
   }
 
-  // Auth middleware (valida token com User Service)
   async authMiddleware(req, res, next) {
     const authHeader = req.header("Authorization");
 
@@ -149,7 +140,6 @@ class ListService {
     try {
       const userServiceUrl = "http://localhost:3001";
 
-      // Validar token com User Service
       const response = await axios.post(
         `${userServiceUrl}/auth/validate`,
         {
@@ -185,13 +175,12 @@ class ListService {
     try {
       const rabbitmqService = require("../../shared/rabbitmqService");
       await rabbitmqService.connect();
-      console.log("✅ List Service conectado ao RabbitMQ");
+      console.log("List Service conectado ao RabbitMQ");
     } catch (error) {
-      console.error("❌ Erro ao conectar RabbitMQ:", error.message);
+      console.error("Erro ao conectar RabbitMQ:", error.message);
     }
   }
 
-  // Create list
   async createList(req, res) {
     try {
       const { name, description } = req.body;
@@ -203,7 +192,6 @@ class ListService {
         });
       }
 
-      // Criar lista
       const newList = await this.listsDb.create({
         id: uuidv4(),
         userId: req.user.id,
@@ -234,13 +222,12 @@ class ListService {
     }
   }
 
-  // Get user's lists
   async getLists(req, res) {
     try {
       const { status } = req.query;
       const userId = req.user.id;
 
-      console.log("🔍 [LIST-SERVICE] Buscando listas para usuário:", userId);
+      console.log("[LIST-SERVICE] Buscando listas para usuário:", userId);
 
       const filter = { userId: userId };
 
@@ -253,7 +240,7 @@ class ListService {
       });
 
       console.log(
-        `✅ [LIST-SERVICE] Encontradas ${lists.length} listas para usuário ${userId}`
+        `[LIST-SERVICE] Encontradas ${lists.length} listas para usuário ${userId}`
       );
 
       res.json({
@@ -269,7 +256,6 @@ class ListService {
     }
   }
 
-  // Get specific list
   async getList(req, res) {
     try {
       const { id } = req.params;
@@ -282,7 +268,6 @@ class ListService {
         });
       }
 
-      // Verificar se o usuário tem acesso à lista
       if (list.userId !== req.user.id) {
         return res.status(403).json({
           success: false,
@@ -303,7 +288,6 @@ class ListService {
     }
   }
 
-  // Update list
   async updateList(req, res) {
     try {
       const { id } = req.params;
@@ -317,7 +301,6 @@ class ListService {
         });
       }
 
-      // Verificar se o usuário tem acesso à lista
       if (list.userId !== req.user.id) {
         return res.status(403).json({
           success: false,
@@ -325,7 +308,6 @@ class ListService {
         });
       }
 
-      // Preparar atualizações
       const updates = {};
       if (name) updates.name = name;
       if (description !== undefined) updates.description = description;
@@ -349,7 +331,6 @@ class ListService {
     }
   }
 
-  // Delete list
   async deleteList(req, res) {
     try {
       const { id } = req.params;
@@ -362,7 +343,6 @@ class ListService {
         });
       }
 
-      // Verificar se o usuário tem acesso à lista
       if (list.userId !== req.user.id) {
         return res.status(403).json({
           success: false,
@@ -385,7 +365,6 @@ class ListService {
     }
   }
 
-  // Add item to list
   async addItemToList(req, res) {
     try {
       const { id } = req.params;
@@ -406,7 +385,6 @@ class ListService {
         });
       }
 
-      // Verificar se o usuário tem acesso à lista
       if (list.userId !== req.user.id) {
         return res.status(403).json({
           success: false,
@@ -414,7 +392,6 @@ class ListService {
         });
       }
 
-      // Buscar informações do item no Item Service
       let itemInfo;
       try {
         const itemServiceUrl = "http://localhost:3003";
@@ -438,13 +415,11 @@ class ListService {
         });
       }
 
-      // Verificar se o item já está na lista
       const existingItemIndex = list.items.findIndex(
         (item) => item.itemId === itemId
       );
 
       if (existingItemIndex >= 0) {
-        // Atualizar item existente
         list.items[existingItemIndex].quantity += parseFloat(quantity) || 1;
         list.items[existingItemIndex].updatedAt = new Date().toISOString();
 
@@ -452,7 +427,6 @@ class ListService {
           list.items[existingItemIndex].notes = notes;
         }
       } else {
-        // Adicionar novo item
         list.items.push({
           itemId: itemInfo.id,
           itemName: itemInfo.name,
@@ -466,7 +440,6 @@ class ListService {
         });
       }
 
-      // Atualizar sumário
       list.summary = this.calculateSummary(list.items);
       list.updatedAt = new Date().toISOString();
 
@@ -486,7 +459,6 @@ class ListService {
     }
   }
 
-  // Update item in list
   async updateItemInList(req, res) {
     try {
       const { id, itemId } = req.params;
@@ -500,7 +472,6 @@ class ListService {
         });
       }
 
-      // Verificar se o usuário tem acesso à lista
       if (list.userId !== req.user.id) {
         return res.status(403).json({
           success: false,
@@ -508,7 +479,6 @@ class ListService {
         });
       }
 
-      // Encontrar o item na lista
       const itemIndex = list.items.findIndex((item) => item.itemId === itemId);
       if (itemIndex === -1) {
         return res.status(404).json({
@@ -517,7 +487,6 @@ class ListService {
         });
       }
 
-      // Atualizar o item
       if (quantity !== undefined)
         list.items[itemIndex].quantity = parseFloat(quantity);
       if (purchased !== undefined) list.items[itemIndex].purchased = purchased;
@@ -525,7 +494,6 @@ class ListService {
 
       list.items[itemIndex].updatedAt = new Date().toISOString();
 
-      // Atualizar sumário
       list.summary = this.calculateSummary(list.items);
       list.updatedAt = new Date().toISOString();
 
@@ -545,7 +513,6 @@ class ListService {
     }
   }
 
-  // Remove item from list
   async removeItemFromList(req, res) {
     try {
       const { id, itemId } = req.params;
@@ -558,7 +525,6 @@ class ListService {
         });
       }
 
-      // Verificar se o usuário tem acesso à lista
       if (list.userId !== req.user.id) {
         return res.status(403).json({
           success: false,
@@ -566,10 +532,8 @@ class ListService {
         });
       }
 
-      // Filtrar o item a ser removido
       list.items = list.items.filter((item) => item.itemId !== itemId);
 
-      // Atualizar sumário
       list.summary = this.calculateSummary(list.items);
       list.updatedAt = new Date().toISOString();
 
@@ -589,7 +553,6 @@ class ListService {
     }
   }
 
-  // Get list summary
   async getListSummary(req, res) {
     try {
       const { id } = req.params;
@@ -602,7 +565,6 @@ class ListService {
         });
       }
 
-      // Verificar se o usuário tem acesso à lista
       if (list.userId !== req.user.id) {
         return res.status(403).json({
           success: false,
@@ -631,9 +593,8 @@ class ListService {
       const { id } = req.params;
       const userId = req.user.id;
 
-      console.log("🛒 [LIST-SERVICE] Iniciando checkout para lista:", id);
+      console.log("[LIST-SERVICE] Iniciando checkout para lista:", id);
 
-      // Buscar lista
       const list = await this.listsDb.findById(id);
       if (!list || list.userId !== userId) {
         return res.status(404).json({
@@ -660,7 +621,7 @@ class ListService {
       };
 
       console.log(
-        "📤 [LIST-SERVICE] Publicando evento de checkout no RabbitMQ:",
+        "[LIST-SERVICE] Publicando evento de checkout no RabbitMQ:",
         {
           listId: id,
           items: list.items.length,
@@ -668,19 +629,16 @@ class ListService {
         }
       );
 
-      // Publicar mensagem no RabbitMQ
       await this.publishCheckoutEvent(message);
 
-      // Atualizar status da lista para "completed"
       const updatedList = await this.listsDb.update(id, {
         status: "completed",
         completedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
 
-      console.log("✅ [LIST-SERVICE] Checkout concluído para lista:", id);
+      console.log("[LIST-SERVICE] Checkout concluído para lista:", id);
 
-      // Retornar 202 Accepted imediatamente
       res.status(202).json({
         success: true,
         message: "Checkout iniciado. Processando em background...",
@@ -692,7 +650,7 @@ class ListService {
         },
       });
     } catch (error) {
-      console.error("❌ [LIST-SERVICE] Erro no checkout:", error);
+      console.error("[LIST-SERVICE] Erro no checkout:", error);
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
@@ -700,19 +658,17 @@ class ListService {
     }
   }
 
-  // Adicionar método para publicar no RabbitMQ
   async publishCheckoutEvent(message) {
     try {
       const rabbitmqService = require("../../shared/rabbitmqService");
 
-      console.log("🐰 [LIST-SERVICE] Conectando ao RabbitMQ...");
+      console.log("[LIST-SERVICE] Conectando ao RabbitMQ...");
 
-      // Garantir que está conectado
       if (!rabbitmqService.isConnected) {
         await rabbitmqService.connect();
       }
 
-      console.log("📤 [LIST-SERVICE] Publicando mensagem...");
+      console.log("[LIST-SERVICE] Publicando mensagem...");
 
       await rabbitmqService.publish(
         "shopping_events",
@@ -721,18 +677,17 @@ class ListService {
       );
 
       console.log(
-        "✅ [LIST-SERVICE] Evento de checkout publicado com sucesso!"
+        "[LIST-SERVICE] Evento de checkout publicado com sucesso!"
       );
       console.log("   Lista ID:", message.listId);
       console.log("   Itens:", message.items.length);
       console.log("   Total: R$", message.total);
     } catch (error) {
-      console.error("❌ [LIST-SERVICE] Erro ao publicar evento:", error);
-      console.log("⚠️ [LIST-SERVICE] Checkout concluído sem RabbitMQ");
+      console.error("[LIST-SERVICE] Erro ao publicar evento:", error);
+      console.log("[LIST-SERVICE] Checkout concluído sem RabbitMQ");
     }
   }
 
-  // Helper: Calculate list summary
   calculateSummary(items) {
     const totalItems = items.length;
     const purchasedItems = items.filter((item) => item.purchased).length;
@@ -747,7 +702,6 @@ class ListService {
     };
   }
 
-  // Register with service registry
   registerWithRegistry() {
     serviceRegistry.register(this.serviceName, {
       url: this.serviceUrl,
@@ -762,7 +716,6 @@ class ListService {
     });
   }
 
-  // Start health check reporting
   startHealthReporting() {
     setInterval(() => {
       serviceRegistry.updateHealth(this.serviceName, true);
@@ -778,7 +731,6 @@ class ListService {
       console.log(`Database: JSON-NoSQL`);
       console.log("=====================================");
 
-      // Register with service registry
       this.registerWithRegistry();
       this.startHealthReporting();
     });
@@ -792,7 +744,7 @@ if (require.main === module) {
 
   // Graceful shutdown
   process.on("SIGTERM", async () => {
-    console.log(`🛑 Encerrando ${this.serviceName}...`);
+    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }
@@ -800,7 +752,7 @@ if (require.main === module) {
   });
 
   process.on("SIGINT", async () => {
-    console.log(`🛑 Encerrando ${this.serviceName}...`);
+    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }

@@ -46,7 +46,6 @@ class ApiGateway {
   setupMiddleware() {
     this.app.use(helmet());
 
-    // ✅ CORREÇÃO CRÍTICA: CORS melhorado para Flutter Web
     this.app.use((req, res, next) => {
       const allowedOrigins = [
         "http://localhost:3000",
@@ -65,7 +64,6 @@ class ApiGateway {
 
       const origin = req.headers.origin;
 
-      // Permite qualquer origem em desenvolvimento
       if (origin) {
         res.header("Access-Control-Allow-Origin", origin);
       } else {
@@ -83,7 +81,6 @@ class ApiGateway {
       res.header("Access-Control-Allow-Credentials", "true");
       res.header("Access-Control-Max-Age", "86400");
 
-      // ✅ CORREÇÃO: Handle preflight requests
       if (req.method === "OPTIONS") {
         console.log("✅ Preflight OPTIONS request handled");
         return res.status(200).end();
@@ -106,7 +103,6 @@ class ApiGateway {
   }
 
   getServiceUrl(serviceName) {
-    // URLs hardcoded como fallback - IGNORA completamente o registry
     const hardcodedUrls = {
       "user-service": "http://localhost:3001",
       "list-service": "http://localhost:3002",
@@ -130,39 +126,29 @@ class ApiGateway {
     // Service registry endpoint
     this.app.get("/registry", this.getRegistry.bind(this));
 
-    // ✅ CORREÇÃO DAS ROTAS - MAPEAMENTO CORRETO
     this.app.use("/api/auth", this.proxyToService("user-service", "/auth"));
     this.app.use("/api/users", this.proxyToService("user-service", "/users"));
 
-    // ✅ CORREÇÃO CRÍTICA: /api/lists vai para / do list-service
     this.app.use("/api/lists", this.proxyToService("list-service", "/"));
 
-    // ✅ CORREÇÃO: /api/items vai para / do item-service
     this.app.use("/api/items", this.proxyToService("item-service", "/"));
 
-    // Aggregated endpoints
     this.app.get("/api/dashboard", this.getDashboard.bind(this));
     this.app.get("/api/search", this.globalSearch.bind(this));
 
-    // ROTAS CORRIGIDAS - ESPECÍFICAS
     this.app.use("/api/auth", this.proxyToService("user-service", "/auth"));
     this.app.use("/api/users", this.proxyToService("user-service", "/users"));
 
-    // ROTA ESPECÍFICA PARA BUSCAR LISTAS
     this.app.get("/api/lists", this.proxyToService("list-service", "/"));
 
-    // ROTAS RESTANTES PARA LISTAS (com parâmetros)
     this.app.use("/api/lists/:id", this.proxyToService("list-service", "/"));
 
-    // ROTA PARA CRIAR LISTA (já está funcionando)
     this.app.post("/api/lists", this.proxyToService("list-service", "/"));
 
-    // ROTA PARA ADICIONAR ITEM À LISTA
     this.app.post("/api/lists/:id/items", this.proxyToService("list-service"));
 
     this.app.use("/api/items", this.proxyToService("item-service", "/"));
 
-    // Root endpoint
     this.app.get("/", (req, res) => {
       res.json({
         service: "API Gateway",
@@ -177,8 +163,27 @@ class ApiGateway {
           "/api/auth/* - User Service",
           "/api/users/* - User Service",
           "/api/items/* - Item Service",
-          "/api/lists/* - List Service", // ← ESTA É A ROTA IMPORTANTE
+          "/api/lists/* - List Service",
         ],
+      });
+    });
+
+    this.app.post("/circuit-breaker/reset", (req, res) => {
+      const { serviceName } = req.body;
+
+      if (this.circuitBreakers[serviceName]) {
+        this.circuitBreakers[serviceName] = {
+          failures: 0,
+          state: "CLOSED",
+          lastFailure: 0,
+        };
+        console.log(`Circuit breaker resetado para ${serviceName}`);
+      }
+
+      res.json({
+        success: true,
+        message: `Circuit breaker resetado para ${serviceName}`,
+        circuitBreakers: this.circuitBreakers,
       });
     });
   }
@@ -202,7 +207,6 @@ class ApiGateway {
     });
   }
 
-  // Health check for all services
   async healthCheck(req, res) {
     try {
       let services;
@@ -233,7 +237,6 @@ class ApiGateway {
             source: "direct",
           };
 
-          // Reset circuit breaker on success
           if (this.circuitBreakers[serviceName]) {
             this.circuitBreakers[serviceName].failures = 0;
             this.circuitBreakers[serviceName].state = "CLOSED";
@@ -245,7 +248,6 @@ class ApiGateway {
             source: "direct",
           };
 
-          // Update circuit breaker on failure
           if (this.circuitBreakers[serviceName]) {
             this.circuitBreakers[serviceName].failures++;
             this.circuitBreakers[serviceName].lastFailure = Date.now();
@@ -278,12 +280,11 @@ class ApiGateway {
     }
   }
 
-  // Get service registry
   async getRegistry(req, res) {
     try {
-      console.log("🔄 Buscando registry...");
+      console.log("Buscando registry...");
       const services = await serviceRegistry.getAllServices();
-      console.log("✅ Registry encontrado:", Object.keys(services));
+      console.log("Registry encontrado:", Object.keys(services));
 
       res.json({
         success: true,
@@ -291,7 +292,7 @@ class ApiGateway {
         count: Object.keys(services).length,
       });
     } catch (error) {
-      console.error("❌ Erro ao buscar registry:", error.message);
+      console.error("Erro ao buscar registry:", error.message);
       res.status(500).json({
         success: false,
         message: "Erro ao acessar service registry",
@@ -313,13 +314,17 @@ class ApiGateway {
       if (this.circuitBreakers[serviceName]?.state === "OPEN") {
         const timeSinceLastFailure =
           Date.now() - this.circuitBreakers[serviceName].lastFailure;
-        if (timeSinceLastFailure > 30000) {
+
+        // Reduzir de 30s para 5s para testes
+        if (timeSinceLastFailure > 5000) {
           this.circuitBreakers[serviceName].state = "HALF-OPEN";
+          console.log(`🔄 Circuit breaker HALF-OPEN for ${serviceName}`);
         } else {
           return res.status(503).json({
             success: false,
             message: `Serviço ${serviceName} temporariamente indisponível`,
             circuitBreaker: "OPEN",
+            retryAfter: Math.ceil((5000 - timeSinceLastFailure) / 1000),
           });
         }
       }
@@ -327,9 +332,8 @@ class ApiGateway {
       try {
         const serviceUrl = this.getServiceUrl(serviceName);
 
-        // ✅ CORREÇÃO: Add debug logs AFTER serviceUrl is defined
         console.log(
-          `🔄 [GATEWAY] Proxying ${req.method} ${req.originalUrl} to ${serviceName}`
+          `[GATEWAY] Proxying ${req.method} ${req.originalUrl} to ${serviceName}`
         );
         console.log(`🔗 Target service URL: ${serviceUrl}`);
 
@@ -340,10 +344,8 @@ class ApiGateway {
           });
         }
 
-        // Construir a URL correta
         let targetPath = req.originalUrl;
 
-        // Mapeamento correto dos prefixos
         if (
           serviceName === "user-service" &&
           targetPath.startsWith("/api/auth")
@@ -367,7 +369,7 @@ class ApiGateway {
         }
 
         const targetUrl = `${serviceUrl}${targetPath}`;
-        console.log(`🎯 Final target URL: ${targetUrl}`);
+        console.log(`Final target URL: ${targetUrl}`);
 
         const response = await axios({
           method: req.method,
@@ -390,7 +392,6 @@ class ApiGateway {
       } catch (error) {
         console.error(`Proxy error for ${serviceName}:`, error.message);
 
-        // Update circuit breaker
         if (this.circuitBreakers[serviceName]) {
           this.circuitBreakers[serviceName].failures++;
           this.circuitBreakers[serviceName].lastFailure = Date.now();
@@ -412,7 +413,6 @@ class ApiGateway {
     };
   }
 
-  // Dashboard endpoint (aggregates data from multiple services)
   async getDashboard(req, res) {
     try {
       const authHeader = req.header("Authorization");
@@ -424,7 +424,6 @@ class ApiGateway {
 
       const token = authHeader.replace("Bearer ", "");
 
-      // Validar token com URL direta
       const userServiceUrl = "http://localhost:3001";
       const userResponse = await axios.post(
         `${userServiceUrl}/auth/validate`,
@@ -440,7 +439,6 @@ class ApiGateway {
 
       const user = userResponse.data.data.user;
 
-      // Buscar listas do usuário
       const listServiceUrl = "http://localhost:3002";
       const listsResponse = await axios.get(`${listServiceUrl}/`, {
         headers: {
@@ -452,7 +450,6 @@ class ApiGateway {
 
       const lists = listsResponse.data.success ? listsResponse.data.data : [];
 
-      // Buscar contagem de itens ativos
       const itemServiceUrl = "http://localhost:3003";
       const itemsResponse = await axios.get(
         `${itemServiceUrl}/?active=true&limit=1`,
@@ -465,7 +462,6 @@ class ApiGateway {
         ? itemsResponse.data.pagination.total
         : 0;
 
-      // Calcular estatísticas do dashboard
       const activeLists = lists.filter(
         (list) => list.status === "active"
       ).length;
@@ -515,7 +511,6 @@ class ApiGateway {
     }
   }
 
-  // Global search across services
   async globalSearch(req, res) {
     try {
       const { q } = req.query;
@@ -529,7 +524,6 @@ class ApiGateway {
 
       const results = {};
 
-      // Search items - ✅ CORRIGIDO: Usar URL direta
       try {
         const itemServiceUrl = "http://localhost:3003";
         const response = await axios.get(
@@ -545,14 +539,12 @@ class ApiGateway {
         results.itemsError = error.message;
       }
 
-      // If authenticated, search lists too
       const authHeader = req.header("Authorization");
       if (authHeader?.startsWith("Bearer ")) {
         try {
           const token = authHeader.replace("Bearer ", "");
           const listService = serviceRegistry.discover("list-service");
 
-          // Get all user's lists and filter by name
           const response = await axios.get(`${listService.url}/lists`, {
             headers: { Authorization: `Bearer ${token}` },
             timeout: 5000,
@@ -590,7 +582,6 @@ class ApiGateway {
     }
   }
 
-  // Start periodic health checks
   startHealthChecks() {
     setInterval(async () => {
       try {
@@ -602,7 +593,6 @@ class ApiGateway {
 
         const healthResults = {};
 
-        // Testar cada serviço diretamente
         for (const [serviceName, serviceUrl] of Object.entries(serviceUrls)) {
           try {
             const response = await axios.get(`${serviceUrl}/health`, {
@@ -622,7 +612,7 @@ class ApiGateway {
       } catch (error) {
         console.error("Health check interval error:", error);
       }
-    }, 30000); // Check every 30 seconds
+    }, 30000);
   }
 
   start() {
@@ -637,7 +627,6 @@ class ApiGateway {
   }
 }
 
-// Start gateway
 if (require.main === module) {
   const apiGateway = new ApiGateway();
   apiGateway.start();

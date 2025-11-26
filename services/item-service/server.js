@@ -6,7 +6,6 @@ const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 const axios = require("axios");
 
-// Importar banco NoSQL e service registry
 const JsonDatabase = require("../../shared/JsonDatabase");
 const serviceRegistry = require("../../shared/serviceRegistry");
 
@@ -34,12 +33,12 @@ class ItemService {
 
   async seedInitialData() {
     try {
-      console.log("🌱 Verificando dados iniciais...");
+      console.log("Verificando dados iniciais...");
       const existingItems = await this.itemsDb.find();
       console.log(`Itens existentes: ${existingItems.length}`);
 
       if (existingItems.length === 0) {
-        console.log("📦 Criando dados de exemplo...");
+        console.log("Criando dados de exemplo...");
         const sampleItems = [
           // Alimentos (5 itens)
           {
@@ -292,15 +291,15 @@ class ItemService {
 
         for (const item of sampleItems) {
           await this.itemsDb.create(item);
-          console.log(`✅ Item criado: ${item.name}`);
+          console.log(`Item criado: ${item.name}`);
         }
 
-        console.log("🎉 Itens de exemplo criados no Item Service");
+        console.log("Itens de exemplo criados no Item Service");
       } else {
-        console.log("ℹ️  Dados já existem, pulando criação");
+        console.log("ℹDados já existem, pulando criação");
       }
     } catch (error) {
-      console.error("❌ Erro ao criar dados iniciais:", error);
+      console.error("Erro ao criar dados iniciais:", error);
     }
   }
 
@@ -311,7 +310,6 @@ class ItemService {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
-    // Service info headers
     this.app.use((req, res, next) => {
       res.setHeader("X-Service", this.serviceName);
       res.setHeader("X-Service-Version", "1.0.0");
@@ -321,7 +319,6 @@ class ItemService {
   }
 
   setupRoutes() {
-    // Health check
     this.app.get("/health", async (req, res) => {
       try {
         const itemCount = await this.itemsDb.count();
@@ -348,7 +345,6 @@ class ItemService {
       }
     });
 
-    // Service info
     this.app.get("/", (req, res) => {
       res.json({
         service: "Item Service",
@@ -356,12 +352,12 @@ class ItemService {
         description: "Microsserviço para gerenciamento de itens",
         database: "JSON-NoSQL",
         endpoints: [
-          "GET /items", // ✅ Correto
-          "GET /items/:id", // ✅ Correto
-          "POST /items", // ✅ Correto
-          "PUT /items/:id", // ✅ Correto
-          "GET /categories", // ✅ Correto
-          "GET /search", // ✅ Correto
+          "GET /items",
+          "GET /items/:id",
+          "POST /items",
+          "PUT /items/:id",
+          "GET /categories",
+          "GET /search",
         ],
       });
     });
@@ -401,7 +397,6 @@ class ItemService {
     });
   }
 
-  // Auth middleware (valida token com User Service)
   async authMiddleware(req, res, next) {
     const authHeader = req.header("Authorization");
 
@@ -413,10 +408,8 @@ class ItemService {
     }
 
     try {
-      // Descobrir User Service
       const userService = serviceRegistry.discover("user-service");
 
-      // Validar token com User Service
       const response = await axios.post(
         `${userService.url}/auth/validate`,
         {
@@ -443,10 +436,9 @@ class ItemService {
     }
   }
 
-  // Get items (com filtros e paginação)
   async getItems(req, res) {
     try {
-      console.log("📦 Buscando itens...");
+      console.log("Buscando itens...");
       const { page = 1, limit = 10, category, active = true } = req.query;
 
       const filter = { active: active === "true" };
@@ -462,7 +454,7 @@ class ItemService {
 
       const total = await this.itemsDb.count(filter);
 
-      console.log(`✅ Encontrados ${items.length} itens de ${total}`);
+      console.log(`Encontrados ${items.length} itens de ${total}`);
 
       res.json({
         success: true,
@@ -475,7 +467,7 @@ class ItemService {
         },
       });
     } catch (error) {
-      console.error("❌ Erro ao buscar itens:", error);
+      console.error("Erro ao buscar itens:", error);
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
@@ -483,7 +475,6 @@ class ItemService {
     }
   }
 
-  // Get item by ID
   async getItem(req, res) {
     try {
       const { id } = req.params;
@@ -509,7 +500,6 @@ class ItemService {
     }
   }
 
-  // Create item
   async createItem(req, res) {
     try {
       const {
@@ -529,7 +519,6 @@ class ItemService {
         });
       }
 
-      // Criar item
       const newItem = await this.itemsDb.create({
         id: uuidv4(),
         name,
@@ -557,7 +546,6 @@ class ItemService {
     }
   }
 
-  // Update item
   async updateItem(req, res) {
     try {
       const { id } = req.params;
@@ -587,7 +575,6 @@ class ItemService {
     }
   }
 
-  // Get categories
   async getCategories(req, res) {
     try {
       const items = await this.itemsDb.find({ active: true });
@@ -608,7 +595,6 @@ class ItemService {
     }
   }
 
-  // Search items
   async searchItems(req, res) {
     try {
       const { q, category, limit = 10 } = req.query;
@@ -620,27 +606,24 @@ class ItemService {
         });
       }
 
-      console.log("🔍 [ITEM-SERVICE] Buscando:", { q, category, limit });
+      console.log("[ITEM-SERVICE] Buscando:", { q, category, limit });
 
       const filter = {
         active: true,
       };
 
-      // ✅ CORREÇÃO: Se a busca é exatamente uma categoria, buscar por categoria
       const categories = ["Alimentos", "Bebidas", "Higiene", "Limpeza"];
       if (categories.includes(q)) {
         // Buscar por categoria
         filter.category = q;
-        console.log(`🔍 [ITEM-SERVICE] Buscando por categoria: ${q}`);
+        console.log(`[ITEM-SERVICE] Buscando por categoria: ${q}`);
       } else {
-        // Buscar por nome (busca normal)
         filter.$regex = q;
         filter.$options = "i";
         filter.$field = "name";
         console.log(`🔍 [ITEM-SERVICE] Buscando por nome: ${q}`);
       }
 
-      // Filtrar por categoria adicional se fornecida
       if (category && category !== "all") {
         filter.category = category;
       }
@@ -650,7 +633,7 @@ class ItemService {
         sort: { name: 1 },
       });
 
-      console.log(`✅ [ITEM-SERVICE] Encontrados ${items.length} itens`);
+      console.log(`[ITEM-SERVICE] Encontrados ${items.length} itens`);
 
       res.json({
         success: true,
@@ -671,7 +654,6 @@ class ItemService {
     }
   }
 
-  // Register with service registry
   registerWithRegistry() {
     serviceRegistry.register(this.serviceName, {
       url: this.serviceUrl,
@@ -681,7 +663,6 @@ class ItemService {
     });
   }
 
-  // Start health check reporting
   startHealthReporting() {
     setInterval(() => {
       serviceRegistry.updateHealth(this.serviceName, true);
@@ -697,7 +678,6 @@ class ItemService {
       console.log(`Database: JSON-NoSQL`);
       console.log("=====================================");
 
-      // Registrar no service registry
       this.registerWithRegistry();
       this.startHealthReporting();
 
@@ -708,14 +688,13 @@ class ItemService {
   }
 }
 
-// Start service
 if (require.main === module) {
   const itemService = new ItemService();
   itemService.start();
 
   // Graceful shutdown
   process.on("SIGTERM", async () => {
-    console.log(`🛑 Encerrando ${this.serviceName}...`);
+    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }
@@ -723,7 +702,7 @@ if (require.main === module) {
   });
 
   process.on("SIGINT", async () => {
-    console.log(`🛑 Encerrando ${this.serviceName}...`);
+    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }

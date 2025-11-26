@@ -15,9 +15,48 @@
     "updatedAt": "2025-11-19T19:11:15.251Z"
   },
   {
-    "id": "22e96bea-012d-4909-8c7d-ab7b61c57f73",
+    "id": "ed4464a4-c9f3-49f6-8c14-7e84216aaf55",
     "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
-    "name": "compras",
+    "name": "online",
+    "description": "",
+    "status": "completed",
+    "items": [
+      {
+        "itemId": "0c38fbef-fcf2-4980-b7ec-2d5912930635",
+        "itemName": "Arroz",
+        "quantity": 2,
+        "unit": "kg",
+        "estimatedPrice": 5.99,
+        "purchased": true,
+        "notes": "",
+        "addedAt": "2025-11-26T12:34:06.637Z",
+        "updatedAt": "2025-11-26T12:34:15.818Z"
+      },
+      {
+        "itemId": "e1251bf6-1c31-45a9-bbda-2e14cfd459e2",
+        "itemName": "Cerveja",
+        "quantity": 2,
+        "unit": "ml",
+        "estimatedPrice": 3.49,
+        "purchased": true,
+        "notes": "",
+        "addedAt": "2025-11-26T12:34:11.507Z",
+        "updatedAt": "2025-11-26T12:34:18.902Z"
+      }
+    ],
+    "summary": {
+      "totalItems": 2,
+      "purchasedItems": 2,
+      "estimatedTotal": 18.96
+    },
+    "createdAt": "2025-11-26T12:34:00.359Z",
+    "updatedAt": "2025-11-26T12:34:22.549Z",
+    "completedAt": "2025-11-26T12:34:22.549Z"
+  },
+  {
+    "id": "be7417a7-1180-457d-9606-023db60de767",
+    "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
+    "name": "offline",
     "description": "",
     "status": "completed",
     "items": [
@@ -29,39 +68,28 @@
         "estimatedPrice": 5.99,
         "purchased": true,
         "notes": "",
-        "addedAt": "2025-11-20T13:17:34.607Z",
-        "updatedAt": "2025-11-20T13:17:55.297Z"
+        "addedAt": "2025-11-26T12:35:06.968Z",
+        "updatedAt": "2025-11-26T12:35:17.824Z"
       },
       {
-        "itemId": "e1251bf6-1c31-45a9-bbda-2e14cfd459e2",
-        "itemName": "Cerveja",
+        "itemId": "19c42eb1-0549-4e6e-ac51-589d6cbc0420",
+        "itemName": "Desinfetante",
         "quantity": 1,
-        "unit": "ml",
-        "estimatedPrice": 3.49,
+        "unit": "litro",
+        "estimatedPrice": 9.49,
         "purchased": true,
         "notes": "",
-        "addedAt": "2025-11-20T13:17:42.078Z",
-        "updatedAt": "2025-11-20T13:17:57.387Z"
-      },
-      {
-        "itemId": "a1b00174-c3ba-4b9c-91f3-31854c5b2ee2",
-        "itemName": "Sabão em Pó",
-        "quantity": 1,
-        "unit": "kg",
-        "estimatedPrice": 15.9,
-        "purchased": true,
-        "notes": "",
-        "addedAt": "2025-11-20T13:17:51.945Z",
-        "updatedAt": "2025-11-20T13:17:57.991Z"
+        "addedAt": "2025-11-26T12:35:12.949Z",
+        "updatedAt": "2025-11-26T12:35:19.483Z"
       }
     ],
     "summary": {
-      "totalItems": 3,
-      "purchasedItems": 3,
-      "estimatedTotal": 25.38
+      "totalItems": 2,
+      "purchasedItems": 2,
+      "estimatedTotal": 15.48
     },
-    "createdAt": "2025-11-20T13:17:28.674Z",
-    "updatedAt": "2025-11-20T13:18:02.220Z",
-    "completedAt": "2025-11-20T13:18:02.220Z"
+    "createdAt": "2025-11-26T12:34:58.793Z",
+    "updatedAt": "2025-11-26T12:35:21.588Z",
+    "completedAt": "2025-11-26T12:35:21.588Z"
   }
 ]

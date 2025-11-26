@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               
               Text(
-                _isLogin ? 'Shopping List Pro' : 'Criar Conta',
+                _isLogin ? 'Shopping List' : 'Criar Conta',
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,

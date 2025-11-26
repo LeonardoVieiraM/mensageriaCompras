@@ -12,7 +12,6 @@ class NotificationService {
   }
 
   setupRoutes() {
-    // Health check simples
     this.app.get("/health", (req, res) => {
       res.json({
         service: this.serviceName,
@@ -38,20 +37,19 @@ class NotificationService {
         this.handleCheckoutEvent.bind(this)
       );
     } catch (error) {
-      console.error("❌ Erro ao iniciar consumer:", error);
+      console.error("Erro ao iniciar consumer:", error);
       setTimeout(() => this.startConsumer(), 5000);
     }
   }
 
   async handleCheckoutEvent(message) {
-    console.log(`\n📧 [NOTIFICATION-SERVICE] RECEBENDO COMPROVANTE:`);
+    console.log(`\n[NOTIFICATION-SERVICE] RECEBENDO COMPROVANTE:`);
     console.log(`   Lista ID: ${message.listId}`);
     console.log(`   Usuário: ${message.userName} (${message.userEmail})`);
     console.log(`   Total: R$ ${message.total}`);
     console.log(`   Itens: ${message.items.length}`);
     console.log(`   Timestamp: ${message.timestamp}`);
 
-    // Listar itens
     message.items.forEach((item, index) => {
       console.log(
         `   ${index + 1}. ${item.itemName} - R$ ${item.estimatedPrice} x ${
@@ -60,10 +58,9 @@ class NotificationService {
       );
     });
 
-    // Simular envio de email
-    console.log("⏳ [NOTIFICATION-SERVICE] Enviando comprovante por email...");
+    console.log("[NOTIFICATION-SERVICE] Enviando comprovante por email...");
     await this.delay(1000);
-    console.log("✅ [NOTIFICATION-SERVICE] Comprovante enviado com sucesso!\n");
+    console.log("[NOTIFICATION-SERVICE] Comprovante enviado com sucesso!\n");
   }
 
   delay(ms) {
@@ -81,7 +78,6 @@ class NotificationService {
   }
 }
 
-// Start service
 if (require.main === module) {
   const service = new NotificationService();
   service.start();

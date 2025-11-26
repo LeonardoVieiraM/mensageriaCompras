@@ -17,7 +17,7 @@ class ApiService {
 
   static void setAuthToken(String token) {
     _authToken = token;
-    print('✅ Token definido: ${token.substring(0, 20)}...');
+    print('Token definido: ${token.substring(0, 20)}...');
   }
 
   static Map<String, String> get _headers {
@@ -33,48 +33,55 @@ class ApiService {
 
   // ========== LIST SERVICE ==========
 
+  static Future<T> _withRetry<T>(
+    Future<T> Function() apiCall, {
+    String? operation,
+  }) async {
+    int attempts = 0;
+    final maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      try {
+        return await apiCall();
+      } catch (e) {
+        attempts++;
+        print('Tentativa $attempts/$maxAttempts falhou para $operation: $e');
+
+        if (attempts == maxAttempts) {
+          rethrow;
+        }
+
+        await Future.delayed(Duration(seconds: attempts * 2));
+        print('Tentando novamente $operation...');
+      }
+    }
+
+    throw Exception('Todas as tentativas falharam para $operation');
+  }
+
   static Future<List<ShoppingList>> getShoppingLists() async {
-    try {
+    return await _withRetry(() async {
       final url = 'http://localhost:3002/user-lists';
-      print('🔄 [LIST-SERVICE] Buscando listas de: $url');
+      print('[LIST-SERVICE] Buscando listas de: $url');
 
       final response = await http
           .get(Uri.parse(url), headers: _headers)
           .timeout(const Duration(seconds: 10));
 
-      print('📡 [LIST-SERVICE] Status: ${response.statusCode}');
-      print('📡 [LIST-SERVICE] Response: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data is Map && data['success'] == true) {
           if (data['data'] is List) {
             final listsData = data['data'] as List<dynamic>;
-            print('✅ Encontradas ${listsData.length} listas no total');
-
             final lists = listsData.map((listData) {
               return ShoppingList.fromMap(listData as Map<String, dynamic>);
             }).toList();
-
-            print('✅ Listas convertidas: ${lists.length}');
             return lists;
-          } else {
-            print('⚠️ Data não é uma lista, é: ${data['data']?.runtimeType}');
-            return [];
           }
-        } else {
-          print('❌ Success é false: ${data['message']}');
-          return [];
         }
-      } else {
-        print('❌ HTTP Error: ${response.statusCode}');
-        return [];
       }
-    } catch (e) {
-      print('❌ Erro ao buscar listas: $e');
-      return [];
-    }
+      throw Exception('Falha ao buscar listas: ${response.statusCode}');
+    }, operation: 'getShoppingLists');
   }
 
   static Future<ShoppingList> createShoppingList(
@@ -83,7 +90,7 @@ class ApiService {
   ) async {
     try {
       final url = '$baseUrl/lists/';
-      print('🔄 [GATEWAY] Criando lista em: $url');
+      print('[GATEWAY] Criando lista em: $url');
 
       final response = await http
           .post(
@@ -93,13 +100,13 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('📡 [GATEWAY] Create Status: ${response.statusCode}');
-      print('📡 [GATEWAY] Create Response: ${response.body}');
+      print('[GATEWAY] Create Status: ${response.statusCode}');
+      print('[GATEWAY] Create Response: ${response.body}');
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          print('✅ Lista criada com sucesso!');
+          print('Lista criada com sucesso!');
           return ShoppingList.fromMap(data['data'] as Map<String, dynamic>);
         } else {
           throw Exception('Create failed: ${data['message']}');
@@ -108,7 +115,7 @@ class ApiService {
         throw Exception('HTTP Error ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Erro ao criar lista: $e');
+      print('Erro ao criar lista: $e');
       rethrow;
     }
   }
@@ -162,22 +169,21 @@ class ApiService {
 
   static Future<List<String>> getCategories() async {
     try {
-      print('🔄 [GATEWAY] Buscando categorias...');
+      print('[GATEWAY] Buscando categorias...');
 
       final response = await http
           .get(Uri.parse('$baseUrl/items/categories'), headers: _headers)
           .timeout(const Duration(seconds: 10));
 
-      print('📡 [GATEWAY] Categories Status: ${response.statusCode}');
-      print('📡 [GATEWAY] Categories Response: ${response.body}');
+      print('[GATEWAY] Categories Status: ${response.statusCode}');
+      print('[GATEWAY] Categories Response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          // ✅ CORREÇÃO: API retorna List<String>, não List<Map>
           if (data['data'] is List) {
             final categories = List<String>.from(data['data']);
-            print('✅ Categorias carregadas: ${categories.length}');
+            print('Categorias carregadas: ${categories.length}');
             return categories;
           } else {
             throw Exception('Formato de categorias inválido');
@@ -189,7 +195,7 @@ class ApiService {
         throw Exception('HTTP Error ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Erro ao carregar categorias: $e');
+      print('Erro ao carregar categorias: $e');
       rethrow;
     }
   }
@@ -201,7 +207,7 @@ class ApiService {
     ShoppingItem item,
   ) async {
     try {
-      print('🔄 [GATEWAY] Adicionando item à lista: $listId');
+      print('[GATEWAY] Adicionando item à lista: $listId');
 
       final response = await http.post(
         Uri.parse('$baseUrl/lists/$listId/items'),
@@ -213,15 +219,14 @@ class ApiService {
         }),
       );
 
-      print('📡 [GATEWAY] Add Item Status: ${response.statusCode}');
-      print('📡 [GATEWAY] Add Item Response: ${response.body}');
+      print('[GATEWAY] Add Item Status: ${response.statusCode}');
+      print('[GATEWAY] Add Item Response: ${response.body}');
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          print('✅ Item adicionado com sucesso!');
+          print('Item adicionado com sucesso!');
 
-          // ✅ CORREÇÃO: Verificar se data['data'] existe
           if (data['data'] != null) {
             return ShoppingList.fromMap(data['data'] as Map<String, dynamic>);
           } else {
@@ -234,7 +239,7 @@ class ApiService {
         throw Exception('HTTP Error ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Erro ao adicionar item: $e');
+      print('Erro ao adicionar item: $e');
       rethrow;
     }
   }
@@ -244,10 +249,10 @@ class ApiService {
     ShoppingItem item,
   ) async {
     try {
-      print('🔄 [GATEWAY] Atualizando item na lista: $listId');
-      print('📦 Item ID: ${item.id}');
-      print('📦 Item quantity: ${item.quantity}');
-      print('📦 Item purchased: ${item.purchased}');
+      print('[GATEWAY] Atualizando item na lista: $listId');
+      print('Item ID: ${item.id}');
+      print('Item quantity: ${item.quantity}');
+      print('Item purchased: ${item.purchased}');
 
       final response = await http.put(
         Uri.parse('$baseUrl/lists/$listId/items/${item.id}'),
@@ -259,13 +264,13 @@ class ApiService {
         }),
       );
 
-      print('📡 [GATEWAY] Update Item Status: ${response.statusCode}');
-      print('📡 [GATEWAY] Update Item Response: ${response.body}');
+      print('[GATEWAY] Update Item Status: ${response.statusCode}');
+      print('[GATEWAY] Update Item Response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          print('✅ Item atualizado com sucesso!');
+          print('Item atualizado com sucesso!');
           return ShoppingList.fromMap(data['data'] as Map<String, dynamic>);
         } else {
           throw Exception('Update failed: ${data['message']}');
@@ -274,7 +279,7 @@ class ApiService {
         throw Exception('HTTP Error ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Erro ao atualizar item: $e');
+      print('Erro ao atualizar item: $e');
       rethrow;
     }
   }
@@ -322,7 +327,7 @@ class ApiService {
   ) async {
     try {
       final url = '$baseUrl/auth/login';
-      print('🔐 [GATEWAY] Tentando login em: $url');
+      print('[GATEWAY] Tentando login em: $url');
 
       final response = await http
           .post(
@@ -332,23 +337,23 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('📡 [GATEWAY] Login Status: ${response.statusCode}');
+      print('[GATEWAY] Login Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          print('✅ Login bem-sucedido!');
+          print('Login bem-sucedido!');
           return data['data'];
         } else {
-          print('❌ Login falhou: ${data['message']}');
+          print('Login falhou: ${data['message']}');
           throw Exception(data['message']);
         }
       } else {
-        print('❌ HTTP Error: ${response.statusCode}');
+        print('HTTP Error: ${response.statusCode}');
         throw Exception('Erro de conexão: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Login Exception: $e');
+      print('Login Exception: $e');
       rethrow;
     }
   }
