@@ -2,13 +2,25 @@ import 'package:flutter/material.dart';
 import '../models/shopping_list.dart';
 import '../models/shopping_item.dart';
 import '../services/api_service.dart';
+import '../services/connectivity_service.dart';
+import '../services/sync_service.dart';
+import '../services/database_service.dart';
 import 'add_item_screen.dart';
 import '../widgets/shopping_item_card.dart';
 
 class ShoppingListDetailScreen extends StatefulWidget {
   final ShoppingList list;
+  final ConnectivityService connectivityService;
+  final SyncService syncService;
+  final DatabaseService databaseService;
 
-  const ShoppingListDetailScreen({super.key, required this.list});
+  const ShoppingListDetailScreen({
+    super.key,
+    required this.list,
+    required this.connectivityService,
+    required this.syncService,
+    required this.databaseService,
+  });
 
   @override
   State<ShoppingListDetailScreen> createState() =>
@@ -31,29 +43,58 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   Future<void> _refreshList() async {
     setState(() => _isLoading = true);
     try {
-      final lists = await ApiService.getShoppingLists();
-      final updatedList = lists.firstWhere(
-        (l) => l.id == _list.id,
-        orElse: () => _list,
-      );
-
-      print('🔄 Lista atualizada: ${updatedList.items.length} itens');
-
-      setState(() {
-        _list = updatedList;
-        _isLoading = false;
-      });
+      // Primeiro tenta carregar do servidor se online
+      if (widget.connectivityService.isConnected) {
+        try {
+          final lists = await ApiService.getShoppingLists();
+          final updatedList = lists.firstWhere(
+            (l) => l.id == _list.id,
+            orElse: () => _list,
+          );
+          setState(() {
+            _list = updatedList;
+          });
+        } catch (e) {
+          // Se servidor falhar, usa dados locais
+          print('Servidor indisponível, usando dados locais: $e');
+          final localLists = await widget.databaseService.getLists();
+          final localList = localLists.firstWhere(
+            (l) => l.id == _list.id,
+            orElse: () => _list,
+          );
+          setState(() {
+            _list = localList;
+          });
+        }
+      } else {
+        // Offline: usa apenas dados locais
+        final localLists = await widget.databaseService.getLists();
+        final localList = localLists.firstWhere(
+          (l) => l.id == _list.id,
+          orElse: () => _list,
+        );
+        setState(() {
+          _list = localList;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
-      print('❌ Erro ao atualizar lista: $e');
       _showErrorSnackbar('Erro ao atualizar: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _addItem() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => AddItemScreen(listId: _list.id)),
+      MaterialPageRoute(
+        builder: (context) => AddItemScreen(
+          listId: _list.id,
+          connectivityService: widget.connectivityService,
+          syncService: widget.syncService,
+          databaseService: widget.databaseService,
+        ),
+      ),
     );
 
     if (result == true) {
@@ -64,8 +105,32 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   Future<void> _toggleItemPurchase(ShoppingItem item) async {
     try {
       final updatedItem = item.copyWith(purchased: !item.purchased);
-      await ApiService.updateItemInList(_list.id, updatedItem);
-      await _refreshList();
+
+      // Atualizar localmente primeiro
+      await widget.databaseService.updateItem(updatedItem, isSynced: false);
+
+      // Atualizar UI localmente
+      setState(() {
+        _list = _list.copyWith(
+          items: _list.items
+              .map((i) => i.id == item.id ? updatedItem : i)
+              .toList(),
+        );
+      });
+
+      // Adicionar à fila de sincronização
+      await widget.databaseService.addToSyncQueue(
+        action: 'UPDATE_ITEM',
+        tableName: 'shopping_items',
+        recordId: item.id,
+        data: {...updatedItem.toMap(), 'listId': _list.id},
+      );
+
+      // Sincronizar se online
+      if (widget.connectivityService.isConnected &&
+          !widget.syncService.isSyncing) {
+        await widget.syncService.syncPendingChanges();
+      }
     } catch (e) {
       _showErrorSnackbar('Erro ao atualizar item: $e');
     }
@@ -79,8 +144,32 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
     try {
       final updatedItem = item.copyWith(quantity: newQuantity);
-      await ApiService.updateItemInList(_list.id, updatedItem);
-      await _refreshList();
+
+      // Atualizar localmente primeiro
+      await widget.databaseService.updateItem(updatedItem, isSynced: false);
+
+      // Atualizar UI localmente
+      setState(() {
+        _list = _list.copyWith(
+          items: _list.items
+              .map((i) => i.id == item.id ? updatedItem : i)
+              .toList(),
+        );
+      });
+
+      // Adicionar à fila de sincronização
+      await widget.databaseService.addToSyncQueue(
+        action: 'UPDATE_ITEM',
+        tableName: 'shopping_items',
+        recordId: item.id,
+        data: {...updatedItem.toMap(), 'listId': _list.id},
+      );
+
+      // Sincronizar se online
+      if (widget.connectivityService.isConnected &&
+          !widget.syncService.isSyncing) {
+        await widget.syncService.syncPendingChanges();
+      }
     } catch (e) {
       _showErrorSnackbar('Erro ao atualizar quantidade: $e');
     }
@@ -108,21 +197,33 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
     if (confirmed == true) {
       try {
-        // ✅ CORREÇÃO: Atualizar a lista localmente primeiro para melhor UX
+        // ✅ Atualizar a lista localmente primeiro para melhor UX
         setState(() {
           _list = _list.copyWith(
             items: _list.items.where((i) => i.id != item.id).toList(),
           );
         });
 
-        await ApiService.removeItemFromList(_list.id, item.id);
+        // Remover do banco local
+        await widget.databaseService.deleteItem(item.id);
 
-        // ✅ CORREÇÃO: Recarregar a lista completa do servidor
-        await _refreshList();
+        // Adicionar à fila de sincronização
+        await widget.databaseService.addToSyncQueue(
+          action: 'DELETE_ITEM',
+          tableName: 'shopping_items',
+          recordId: item.id,
+          data: {'itemId': item.id, 'listId': _list.id},
+        );
+
+        // Sincronizar se online
+        if (widget.connectivityService.isConnected &&
+            !widget.syncService.isSyncing) {
+          await widget.syncService.syncPendingChanges();
+        }
 
         _showSuccessSnackbar('Item removido');
       } catch (e) {
-        // ✅ CORREÇÃO: Reverter se houver erro
+        // ✅ Reverter se houver erro
         setState(() {
           _list = _list.copyWith(
             items: [..._list.items, item], // Re-adiciona o item
@@ -164,7 +265,24 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
     if (confirmed == true) {
       try {
-        await ApiService.checkoutList(_list.id);
+        // Marcar lista como concluída localmente
+        final completedList = _list.copyWith(status: 'completed');
+        await widget.databaseService.updateList(completedList, isSynced: false);
+
+        // Adicionar checkout à fila de sincronização
+        await widget.databaseService.addToSyncQueue(
+          action: 'CHECKOUT_LIST',
+          tableName: 'shopping_lists',
+          recordId: _list.id,
+          data: completedList.toMap(),
+        );
+
+        // Executar checkout no servidor se online
+        if (widget.connectivityService.isConnected) {
+          await ApiService.checkoutList(_list.id);
+          await widget.databaseService.markListAsSynced(_list.id);
+        }
+
         await _refreshList();
         _showSuccessSnackbar('Checkout realizado! Processando...');
 

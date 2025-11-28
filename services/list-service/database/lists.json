@@ -91,5 +91,125 @@
     "createdAt": "2025-11-26T12:34:58.793Z",
     "updatedAt": "2025-11-26T12:35:21.588Z",
     "completedAt": "2025-11-26T12:35:21.588Z"
+  },
+  {
+    "id": "5b6509d8-0a26-42b2-a355-35c2fdbd3a65",
+    "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
+    "name": "Teste",
+    "description": "",
+    "status": "active",
+    "items": [],
+    "summary": {
+      "totalItems": 0,
+      "purchasedItems": 0,
+      "estimatedTotal": 0
+    },
+    "createdAt": "2025-11-28T12:38:50.236Z",
+    "updatedAt": "2025-11-28T12:38:50.236Z"
+  },
+  {
+    "id": "e18cf326-c97e-427f-b8ea-768077f401c2",
+    "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
+    "name": "Teste",
+    "description": "",
+    "status": "active",
+    "items": [],
+    "summary": {
+      "totalItems": 0,
+      "purchasedItems": 0,
+      "estimatedTotal": 0
+    },
+    "createdAt": "2025-11-28T12:38:50.345Z",
+    "updatedAt": "2025-11-28T12:38:50.345Z"
+  },
+  {
+    "id": "0105df9a-5c7d-43be-8e3b-0b22e7dcb12d",
+    "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
+    "name": "Teste",
+    "description": "",
+    "status": "active",
+    "items": [],
+    "summary": {
+      "totalItems": 0,
+      "purchasedItems": 0,
+      "estimatedTotal": 0
+    },
+    "createdAt": "2025-11-28T12:39:46.195Z",
+    "updatedAt": "2025-11-28T12:39:46.195Z"
+  },
+  {
+    "id": "ceca3ee6-ddae-4dbd-aade-2346dd7eae03",
+    "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
+    "name": "Teste",
+    "description": "",
+    "status": "active",
+    "items": [],
+    "summary": {
+      "totalItems": 0,
+      "purchasedItems": 0,
+      "estimatedTotal": 0
+    },
+    "createdAt": "2025-11-28T12:39:46.304Z",
+    "updatedAt": "2025-11-28T12:39:46.304Z"
+  },
+  {
+    "id": "64207c13-bb23-4bab-b6e7-814dd4da81a2",
+    "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
+    "name": "Teste",
+    "description": "",
+    "status": "active",
+    "items": [],
+    "summary": {
+      "totalItems": 0,
+      "purchasedItems": 0,
+      "estimatedTotal": 0
+    },
+    "createdAt": "2025-11-28T12:41:31.387Z",
+    "updatedAt": "2025-11-28T12:41:31.387Z"
+  },
+  {
+    "id": "2756c8c1-e212-4faf-8af8-4967df55de07",
+    "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
+    "name": "Teete",
+    "description": "",
+    "status": "active",
+    "items": [],
+    "summary": {
+      "totalItems": 0,
+      "purchasedItems": 0,
+      "estimatedTotal": 0
+    },
+    "createdAt": "2025-11-28T12:43:20.680Z",
+    "updatedAt": "2025-11-28T12:43:20.680Z"
+  },
+  {
+    "id": "da29e90e-af83-4676-91a0-43e51564fc4a",
+    "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
+    "name": "Teste",
+    "description": "",
+    "status": "active",
+    "items": [],
+    "summary": {
+      "totalItems": 0,
+      "purchasedItems": 0,
+      "estimatedTotal": 0
+    },
+    "createdAt": "2025-11-28T12:46:39.425Z",
+    "updatedAt": "2025-11-28T12:46:39.425Z"
+  },
+  {
+    "id": "bdb10d88-48bb-4493-aad3-275d9894e62e",
+    "userId": "98320041-104e-45a5-81a0-8f8311bdb382",
+    "name": "Teste",
+    "description": "",
+    "status": "active",
+    "items": [],
+    "summary": {
+      "totalItems": 0,
+      "purchasedItems": 0,
+      "estimatedTotal": 0
+    },
+    "createdAt": "2025-11-28T12:47:59.813Z",
+    "updatedAt": "2025-11-28T12:47:59.813Z"
   }
 ]

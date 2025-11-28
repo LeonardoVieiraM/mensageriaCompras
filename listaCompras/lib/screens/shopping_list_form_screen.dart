@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import '../models/shopping_list.dart';
-import '../services/api_service.dart';
+import '../services/connectivity_service.dart';
+import '../services/sync_service.dart';
+import '../services/database_service.dart';
 
 class ShoppingListFormScreen extends StatefulWidget {
   final ShoppingList? list;
+  final ConnectivityService connectivityService;
+  final SyncService syncService;
+  final DatabaseService databaseService;
 
-  const ShoppingListFormScreen({super.key, this.list});
+  const ShoppingListFormScreen({
+    super.key,
+    this.list,
+    required this.connectivityService,
+    required this.syncService,
+    required this.databaseService,
+  });
 
   @override
   State<ShoppingListFormScreen> createState() => _ShoppingListFormScreenState();
@@ -20,7 +31,7 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     if (widget.list != null) {
       _nameController.text = widget.list!.name;
       _descriptionController.text = widget.list!.description;
@@ -36,12 +47,29 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
 
     try {
       if (widget.list == null) {
-        // Criar nova lista
-        await ApiService.createShoppingList(
-          _nameController.text.trim(),
-          _descriptionController.text.trim(),
+        // Criar nova lista - salvar localmente primeiro
+        final newList = ShoppingList(
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim(),
         );
-        
+
+        // Salvar no banco local
+        await widget.databaseService.insertList(newList, isSynced: false);
+
+        // Adicionar à fila de sincronização
+        await widget.databaseService.addToSyncQueue(
+          action: 'CREATE_LIST',
+          tableName: 'shopping_lists',
+          recordId: newList.id,
+          data: newList.toMap(),
+        );
+
+        // Sincronizar se online
+        if (widget.connectivityService.isConnected &&
+            !widget.syncService.isSyncing) {
+          await widget.syncService.syncPendingChanges();
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -57,8 +85,24 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
         );
-        await ApiService.updateShoppingList(updatedList);
-        
+
+        // Atualizar localmente
+        await widget.databaseService.updateList(updatedList, isSynced: false);
+
+        // Adicionar à fila de sincronização
+        await widget.databaseService.addToSyncQueue(
+          action: 'UPDATE_LIST',
+          tableName: 'shopping_lists',
+          recordId: updatedList.id,
+          data: updatedList.toMap(),
+        );
+
+        // Sincronizar se online
+        if (widget.connectivityService.isConnected &&
+            !widget.syncService.isSyncing) {
+          await widget.syncService.syncPendingChanges();
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -92,7 +136,7 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.list != null;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Editar Lista' : 'Nova Lista'),
@@ -129,9 +173,9 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
                       },
                       maxLength: 100,
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Campo Descrição
                     TextFormField(
                       controller: _descriptionController,
@@ -146,14 +190,16 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
                       maxLines: 3,
                       maxLength: 200,
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Botão Salvar
                     ElevatedButton.icon(
                       onPressed: _saveList,
                       icon: const Icon(Icons.save),
-                      label: Text(isEditing ? 'Atualizar Lista' : 'Criar Lista'),
+                      label: Text(
+                        isEditing ? 'Atualizar Lista' : 'Criar Lista',
+                      ),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.all(16),
                         backgroundColor: Colors.green,
@@ -163,9 +209,9 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Botão Cancelar
                     OutlinedButton.icon(
                       onPressed: () => Navigator.pop(context),

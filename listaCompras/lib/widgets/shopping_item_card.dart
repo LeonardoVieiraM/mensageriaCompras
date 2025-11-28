@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shopping_list_app/services/database_service.dart';
 import '../models/shopping_item.dart';
 
 class ShoppingItemCard extends StatelessWidget {
@@ -25,6 +26,24 @@ class ShoppingItemCard extends StatelessWidget {
         subtitle: _buildSubtitle(),
         trailing: _buildTrailing(),
       ),
+    );
+  }
+
+  Widget _buildSyncStatus() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: DatabaseService().getSyncStatusForItem(item.id),
+      builder: (context, snapshot) {
+        final isSynced = snapshot.data?['isSynced'] ?? true;
+
+        if (!isSynced) {
+          return Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Icon(Icons.cloud_off, color: Colors.orange, size: 16),
+          );
+        }
+
+        return const SizedBox.shrink();
+      },
     );
   }
 
@@ -81,10 +100,7 @@ class ShoppingItemCard extends StatelessWidget {
         if (item.brand.isNotEmpty)
           Text(
             item.brand,
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
           ),
         const SizedBox(height: 4),
         Row(
@@ -157,9 +173,12 @@ class ShoppingItemCard extends StatelessWidget {
             ],
           ),
         ),
-        
+
         const SizedBox(width: 8),
-        
+
+        // Status de sincronização
+        _buildSyncStatus(),
+
         // Botão Remover
         IconButton(
           icon: const Icon(Icons.delete_outline, color: Colors.red),

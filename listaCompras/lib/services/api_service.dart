@@ -9,7 +9,7 @@ class ApiService {
     if (kIsWeb) {
       return 'http://127.0.0.1:3000/api';
     } else {
-      return 'http://localhost:3000/api';
+      return 'http://10.0.2.2:3000/api';
     }
   }
 
@@ -29,6 +29,18 @@ class ApiService {
       headers['Authorization'] = 'Bearer $_authToken';
     }
     return headers;
+  }
+
+  static Future<bool> checkServerHealth() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/health'))
+          .timeout(Duration(seconds: 5));
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Health check falhou: $e');
+      return false;
+    }
   }
 
   // ========== LIST SERVICE ==========
@@ -61,8 +73,8 @@ class ApiService {
 
   static Future<List<ShoppingList>> getShoppingLists() async {
     return await _withRetry(() async {
-      final url = 'http://localhost:3002/user-lists';
-      print('[LIST-SERVICE] Buscando listas de: $url');
+      final url = '$baseUrl/lists';
+      print('[GATEWAY] Buscando listas de: $url');
 
       final response = await http
           .get(Uri.parse(url), headers: _headers)

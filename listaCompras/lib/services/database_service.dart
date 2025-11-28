@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -20,7 +21,7 @@ class DatabaseService {
 
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'shopping_list_offline.db');
-    
+
     return await openDatabase(
       path,
       version: 1,
@@ -87,22 +88,26 @@ class DatabaseService {
       )
     ''');
 
-    await db.execute('CREATE INDEX idx_lists_synced ON shopping_lists(isSynced)');
-    await db.execute('CREATE INDEX idx_items_synced ON shopping_items(isSynced)');
+    await db.execute(
+      'CREATE INDEX idx_lists_synced ON shopping_lists(isSynced)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_items_synced ON shopping_items(isSynced)',
+    );
     await db.execute('CREATE INDEX idx_items_listId ON shopping_items(listId)');
-    await db.execute('CREATE INDEX idx_sync_queue_timestamp ON sync_queue(timestamp)');
+    await db.execute(
+      'CREATE INDEX idx_sync_queue_timestamp ON sync_queue(timestamp)',
+    );
   }
-
 
   int _getCurrentTimestamp() {
     return DateTime.now().millisecondsSinceEpoch;
   }
 
-
   Future<String> insertList(ShoppingList list, {bool isSynced = true}) async {
     final db = await database;
     final timestamp = _getCurrentTimestamp();
-    
+
     await db.insert('shopping_lists', {
       'id': list.id,
       'name': list.name,
@@ -114,7 +119,7 @@ class DatabaseService {
       'isSynced': isSynced ? 1 : 0,
       'lastModified': timestamp,
     });
-    
+
     return list.id;
   }
 
@@ -124,14 +129,16 @@ class DatabaseService {
       'shopping_lists',
       orderBy: 'updatedAt DESC',
     );
-    
+
     List<ShoppingList> lists = [];
     for (var map in maps) {
       final items = await getItemsByListId(map['id']);
-      lists.add(ShoppingList.fromMap({
-        ...map,
-        'items': items.map((item) => item.toMap()).toList(),
-      }));
+      lists.add(
+        ShoppingList.fromMap({
+          ...map,
+          'items': items.map((item) => item.toMap()).toList(),
+        }),
+      );
     }
     return lists;
   }
@@ -139,7 +146,7 @@ class DatabaseService {
   Future<int> updateList(ShoppingList list, {bool isSynced = true}) async {
     final db = await database;
     final timestamp = _getCurrentTimestamp();
-    
+
     return await db.update(
       'shopping_lists',
       {
@@ -158,24 +165,32 @@ class DatabaseService {
 
   Future<int> deleteList(String id) async {
     final db = await database;
-    await db.delete(
-      'shopping_items',
-      where: 'listId = ?',
-      whereArgs: [id],
-    );
-    
-    return await db.delete(
-      'shopping_lists',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+
+    try {
+      await db.delete('shopping_items', where: 'listId = ?', whereArgs: [id]);
+
+      final result = await db.delete(
+        'shopping_lists',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      print('Lista $id excluída do banco local');
+      return result;
+    } catch (e) {
+      print('Erro ao excluir lista $id: $e');
+      rethrow;
+    }
   }
 
-
-  Future<String> insertItem(ShoppingItem item, {String? listId, bool isSynced = true}) async {
+  Future<String> insertItem(
+    ShoppingItem item, {
+    String? listId,
+    bool isSynced = true,
+  }) async {
     final db = await database;
     final timestamp = _getCurrentTimestamp();
-    
+
     await db.insert('shopping_items', {
       'id': item.id,
       'listId': listId ?? item.productId, // fallback
@@ -193,7 +208,7 @@ class DatabaseService {
       'isSynced': isSynced ? 1 : 0,
       'lastModified': timestamp,
     });
-    
+
     return item.id;
   }
 
@@ -211,7 +226,7 @@ class DatabaseService {
   Future<int> updateItem(ShoppingItem item, {bool isSynced = true}) async {
     final db = await database;
     final timestamp = _getCurrentTimestamp();
-    
+
     return await db.update(
       'shopping_items',
       {
@@ -234,13 +249,8 @@ class DatabaseService {
 
   Future<int> deleteItem(String id) async {
     final db = await database;
-    return await db.delete(
-      'shopping_items',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('shopping_items', where: 'id = ?', whereArgs: [id]);
   }
-
 
   Future<String> addToSyncQueue({
     required String action,
@@ -251,7 +261,7 @@ class DatabaseService {
     final db = await database;
     final queueId = '${_getCurrentTimestamp()}_$recordId';
     final timestamp = _getCurrentTimestamp();
-    
+
     await db.insert('sync_queue', {
       'id': queueId,
       'action': action,
@@ -262,7 +272,7 @@ class DatabaseService {
       'retryCount': 0,
       'lastModified': timestamp,
     });
-    
+
     return queueId;
   }
 
@@ -273,11 +283,7 @@ class DatabaseService {
 
   Future<int> removeFromSyncQueue(String id) async {
     final db = await database;
-    return await db.delete(
-      'sync_queue',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> updateRetryCount(String id, int retryCount) async {
@@ -293,7 +299,6 @@ class DatabaseService {
       whereArgs: [id],
     );
   }
-
 
   Future<void> markListAsSynced(String id) async {
     final db = await database;
@@ -315,7 +320,6 @@ class DatabaseService {
     );
   }
 
-
   Future<List<ShoppingList>> getUnsyncedLists() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -323,14 +327,16 @@ class DatabaseService {
       where: 'isSynced = ?',
       whereArgs: [0],
     );
-    
+
     List<ShoppingList> lists = [];
     for (var map in maps) {
       final items = await getItemsByListId(map['id']);
-      lists.add(ShoppingList.fromMap({
-        ...map,
-        'items': items.map((item) => item.toMap()).toList(),
-      }));
+      lists.add(
+        ShoppingList.fromMap({
+          ...map,
+          'items': items.map((item) => item.toMap()).toList(),
+        }),
+      );
     }
     return lists;
   }
@@ -345,28 +351,73 @@ class DatabaseService {
     return maps.map((map) => ShoppingItem.fromMap(map)).toList();
   }
 
-
   Future<Map<String, dynamic>> getSyncStats() async {
     final db = await database;
-    
-    final unsyncedListsCount = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM shopping_lists WHERE isSynced = 0'
-    )) ?? 0;
-    
-    final unsyncedItemsCount = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM shopping_items WHERE isSynced = 0'
-    )) ?? 0;
-    
-    final queueCount = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM sync_queue'
-    )) ?? 0;
-    
+
+    final unsyncedListsCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM shopping_lists WHERE isSynced = 0',
+          ),
+        ) ??
+        0;
+
+    final unsyncedItemsCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM shopping_items WHERE isSynced = 0',
+          ),
+        ) ??
+        0;
+
+    final queueCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM sync_queue'),
+        ) ??
+        0;
+
     return {
       'unsyncedLists': unsyncedListsCount,
       'unsyncedItems': unsyncedItemsCount,
       'queueItems': queueCount,
-      'totalLists': Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM shopping_lists')) ?? 0,
-      'totalItems': Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM shopping_items')) ?? 0,
+      'totalLists':
+          Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM shopping_lists'),
+          ) ??
+          0,
+      'totalItems':
+          Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM shopping_items'),
+          ) ??
+          0,
+    };
+  }
+
+  Future<Map<String, dynamic>> getSyncStatusForList(String listId) async {
+    final db = await database;
+    final result = await db.query(
+      'shopping_lists',
+      columns: ['isSynced'],
+      where: 'id = ?',
+      whereArgs: [listId],
+    );
+
+    return {
+      'isSynced': result.isNotEmpty ? result.first['isSynced'] == 1 : true,
+    };
+  }
+
+  Future<Map<String, dynamic>> getSyncStatusForItem(String itemId) async {
+    final db = await database;
+    final result = await db.query(
+      'shopping_items',
+      columns: ['isSynced'],
+      where: 'id = ?',
+      whereArgs: [itemId],
+    );
+
+    return {
+      'isSynced': result.isNotEmpty ? result.first['isSynced'] == 1 : true,
     };
   }
 }

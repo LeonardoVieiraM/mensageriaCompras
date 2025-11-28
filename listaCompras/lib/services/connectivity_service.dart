@@ -1,7 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-
 import 'package:http/http.dart' as http;
 
 class ConnectivityService with ChangeNotifier {
@@ -20,11 +19,12 @@ class ConnectivityService with ChangeNotifier {
   Future<void> _init() async {
     await _checkConnection();
     
-    _connectionTimer = Timer.periodic(Duration(seconds: 3), (timer) async {
+    _connectionTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
       await _checkConnection();
     });
 
     _connectivity.onConnectivityChanged.listen((result) async {
+      print('Mudança de conectividade: $result');
       await _checkConnection();
     });
   }
@@ -58,6 +58,11 @@ class ConnectivityService with ChangeNotifier {
       return _isConnected;
     } catch (e) {
       print('Erro ao verificar conectividade: $e');
+      if (_isConnected) {
+        _isConnected = false;
+        notifyListeners();
+        _onConnectionLost();
+      }
       return false;
     } finally {
       _isChecking = false;
@@ -67,22 +72,19 @@ class ConnectivityService with ChangeNotifier {
 
   Future<bool> _testRealConnection() async {
     try {
-      final response = await http.get(
-        Uri.parse('http://127.0.0.1:3000/health'),
-        headers: {'Accept': 'application/json'},
-      ).timeout(Duration(seconds: 3));
+      final response = await http
+          .get(Uri.parse('http://10.0.2.2:3000/health'))
+          .timeout(Duration(seconds: 3));
       
       return response.statusCode == 200;
     } catch (e) {
+      print('Teste de conexão real falhou: $e');
       return false;
     }
   }
 
   void _onConnectionRestored() {
     print('Conexão restaurada! Disparando sincronização...');
-    Future.delayed(Duration(seconds: 2), () {
-      notifyListeners();
-    });
   }
 
   void _onConnectionLost() {
@@ -93,22 +95,9 @@ class ConnectivityService with ChangeNotifier {
     return await _checkConnection();
   }
 
-  void simulateOffline() {
-    if (_isConnected) {
-      _isConnected = false;
-      print('Simulando modo offline');
-      notifyListeners();
-      _onConnectionLost();
-    }
-  }
-
-  void simulateOnline() {
-    if (!_isConnected) {
-      _isConnected = true;
-      print('Simulando modo online');
-      notifyListeners();
-      _onConnectionRestored();
-    }
+  // Método para forçar verificação
+  Future<void> forceCheck() async {
+    await _checkConnection();
   }
 
   @override

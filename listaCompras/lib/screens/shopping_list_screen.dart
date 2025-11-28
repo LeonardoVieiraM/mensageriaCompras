@@ -1,20 +1,32 @@
 import 'package:flutter/material.dart';
 import '../models/shopping_list.dart';
 import '../services/api_service.dart';
+import '../services/connectivity_service.dart';
+import '../services/sync_service.dart';
+import '../services/database_service.dart';
 import 'shopping_list_form_screen.dart';
 import 'shopping_list_detail_screen.dart';
 import '../widgets/shopping_list_card.dart';
 
 class ShoppingListScreen extends StatefulWidget {
-  const ShoppingListScreen({super.key});
+  final ConnectivityService connectivityService;
+  final SyncService syncService;
+  final DatabaseService databaseService;
+
+  const ShoppingListScreen({
+    super.key,
+    required this.connectivityService,
+    required this.syncService,
+    required this.databaseService,
+  });
 
   @override
   State<ShoppingListScreen> createState() => _ShoppingListScreenState();
 }
 
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
-  List<ShoppingList> _lists = [];
-  String _filter = 'all'; // all, active, completed
+  final List<ShoppingList> _lists = [];
+  String _filter = 'all';
   bool _isLoading = false;
 
   @override
@@ -26,14 +38,41 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Future<void> _loadLists() async {
     setState(() => _isLoading = true);
     try {
-      final lists = await ApiService.getShoppingLists();
-      setState(() {
-        _lists = lists;
-        _isLoading = false;
-      });
+      // Primeiro carrega do banco local
+      final localLists = await widget.databaseService.getLists();
+
+      // Se estiver online, tenta sincronizar e carregar do servidor
+      if (widget.connectivityService.isConnected) {
+        try {
+          final serverLists = await ApiService.getShoppingLists();
+          setState(() {
+            _lists.clear();
+            _lists.addAll(serverLists);
+          });
+
+          // Sincronizar quaisquer mudanças pendentes
+          if (!widget.syncService.isSyncing) {
+            await widget.syncService.syncPendingChanges();
+          }
+        } catch (e) {
+          // Se servidor falhar, usa dados locais
+          print('Servidor indisponível, usando dados locais: $e');
+          setState(() {
+            _lists.clear();
+            _lists.addAll(localLists);
+          });
+        }
+      } else {
+        // Offline: usa apenas dados locais
+        setState(() {
+          _lists.clear();
+          _lists.addAll(localLists);
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
       _showErrorSnackbar('Erro ao carregar listas: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -53,7 +92,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmar exclusão'),
-        content: Text('Deseja excluir "${list.name}"?'),
+        content: Text(
+          'Deseja excluir a lista "${list.name}"? Esta ação não pode ser desfeita.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -69,12 +110,44 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     );
 
     if (confirmed == true) {
+      setState(() => _isLoading = true);
+
       try {
-        await ApiService.deleteShoppingList(list.id);
-        await _loadLists();
-        _showSuccessSnackbar('Lista excluída');
+        setState(() {
+          _lists.removeWhere((l) => l.id == list.id);
+        });
+
+        await widget.databaseService.deleteList(list.id);
+
+        await widget.databaseService.addToSyncQueue(
+          action: 'DELETE_LIST',
+          tableName: 'shopping_lists',
+          recordId: list.id,
+          data: {'id': list.id, 'name': list.name},
+        );
+
+        if (widget.connectivityService.isConnected) {
+          try {
+            await widget.syncService.syncPendingChanges();
+            print('Lista excluída e sincronizada com servidor');
+          } catch (syncError) {
+            print(
+              'Lista excluída localmente, sincronização falhou: $syncError',
+            );
+          }
+        }
+
+        _showSuccessSnackbar('Lista "${list.name}" excluída');
       } catch (e) {
-        _showErrorSnackbar('Erro ao excluir: $e');
+        setState(() {
+          _lists.add(list);
+          _lists.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        });
+
+        _showErrorSnackbar('Erro ao excluir lista: $e');
+        print('Erro detalhado na exclusão: $e');
+      } finally {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -83,7 +156,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ShoppingListFormScreen(list: list),
+        builder: (context) => ShoppingListFormScreen(
+          list: list,
+          connectivityService: widget.connectivityService,
+          syncService: widget.syncService,
+          databaseService: widget.databaseService,
+        ),
       ),
     );
 
@@ -222,8 +300,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                             final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    ShoppingListDetailScreen(list: list),
+                                builder: (context) => ShoppingListDetailScreen(
+                                  list: list,
+                                  connectivityService:
+                                      widget.connectivityService,
+                                  syncService: widget.syncService,
+                                  databaseService: widget.databaseService,
+                                ),
                               ),
                             );
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shopping_list_app/services/database_service.dart';
 import '../models/shopping_list.dart';
 
 class ShoppingListCard extends StatelessWidget {
@@ -36,48 +37,54 @@ class ShoppingListCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: _getStatusColor().withOpacity(0.2),
         shape: BoxShape.circle,
-        border: Border.all(
-          color: _getStatusColor(),
-          width: 2,
-        ),
+        border: Border.all(color: _getStatusColor(), width: 2),
       ),
-      child: Icon(
-        _getStatusIcon(),
-        color: _getStatusColor(),
-        size: 24,
-      ),
+      child: Icon(_getStatusIcon(), color: _getStatusColor(), size: 24),
     );
   }
 
   Widget _buildTitle() {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            list.name,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: list.status == 'completed' ? Colors.grey : null,
+    return FutureBuilder<Map<String, dynamic>>(
+      future: DatabaseService().getSyncStatusForList(list.id),
+      builder: (context, snapshot) {
+        final isSynced = snapshot.data?['isSynced'] ?? true;
+
+        return Row(
+          children: [
+            Expanded(
+              child: Text(
+                list.name,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: list.status == 'completed' ? Colors.grey : null,
+                ),
+              ),
             ),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: _getStatusColor().withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            _getStatusText(),
-            style: TextStyle(
-              fontSize: 10,
-              color: _getStatusColor(),
-              fontWeight: FontWeight.bold,
+            // Ícone de status de sincronização
+            if (!isSynced)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(Icons.cloud_off, color: Colors.orange, size: 16),
+              ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _getStatusColor().withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _getStatusText(),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: _getStatusColor(),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -90,10 +97,7 @@ class ShoppingListCard extends StatelessWidget {
             list.description,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
           ),
         const SizedBox(height: 4),
         Row(
