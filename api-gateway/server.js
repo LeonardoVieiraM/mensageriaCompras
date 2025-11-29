@@ -1,11 +1,8 @@
 const express = require("express");
-const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const axios = require("axios");
-const path = require("path");
 
-// Importar service registry
 const serviceRegistry = require("../shared/serviceRegistry");
 
 class ApiGateway {
@@ -15,7 +12,6 @@ class ApiGateway {
     this.serviceName = "api-gateway";
     this.serviceUrl = `http://localhost:${this.port}`;
 
-    // Circuit breaker state
     this.circuitBreakers = {
       "user-service": { failures: 0, state: "CLOSED", lastFailure: 0 },
       "item-service": { failures: 0, state: "CLOSED", lastFailure: 0 },
@@ -30,12 +26,7 @@ class ApiGateway {
   }
 
   async initializeGateway() {
-    console.log("API Gateway inicializando...");
-
-    // Aguarda os serviços se registrarem
     await this.delay(5000);
-
-    console.log("API Gateway pronto para receber requisições");
     this.startHealthChecks();
   }
 
@@ -47,21 +38,6 @@ class ApiGateway {
     this.app.use(helmet());
 
     this.app.use((req, res, next) => {
-      const allowedOrigins = [
-        "http://localhost:3000",
-        "http://localhost:5000",
-        "http://localhost:8080",
-        "http://localhost:18948",
-        "http://localhost:44965",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5000",
-        "http://127.0.0.1:8080",
-        "http://127.0.0.1:18948",
-        "http://127.0.0.1:44965",
-        "http://localhost:65276",
-        "http://127.0.0.1:65276",
-      ];
-
       const origin = req.headers.origin;
 
       if (origin) {
@@ -82,7 +58,6 @@ class ApiGateway {
       res.header("Access-Control-Max-Age", "86400");
 
       if (req.method === "OPTIONS") {
-        console.log("✅ Preflight OPTIONS request handled");
         return res.status(200).end();
       }
 
@@ -93,7 +68,6 @@ class ApiGateway {
     this.app.use(express.json({ limit: "10mb" }));
     this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-    // Service info headers
     this.app.use((req, res, next) => {
       res.setHeader("X-Service", this.serviceName);
       res.setHeader("X-Service-Version", "1.0.0");
@@ -111,7 +85,6 @@ class ApiGateway {
 
     const url = hardcodedUrls[serviceName];
     if (url) {
-      console.log(`Using hardcoded URL for ${serviceName}: ${url}`);
       return url;
     }
 
@@ -120,10 +93,8 @@ class ApiGateway {
   }
 
   setupRoutes() {
-    // Health check endpoint
     this.app.get("/health", this.healthCheck.bind(this));
 
-    // Service registry endpoint
     this.app.get("/registry", this.getRegistry.bind(this));
 
     this.app.use("/api/auth", this.proxyToService("user-service", "/auth"));
@@ -177,7 +148,6 @@ class ApiGateway {
           state: "CLOSED",
           lastFailure: 0,
         };
-        console.log(`Circuit breaker resetado para ${serviceName}`);
       }
 
       res.json({
@@ -197,7 +167,7 @@ class ApiGateway {
       });
     });
 
-    this.app.use((error, req, res, next) => {
+    this.app.use((error, req, res) => {
       console.error("API Gateway Error:", error);
       res.status(500).json({
         success: false,
@@ -224,7 +194,7 @@ class ApiGateway {
         "list-service": "http://localhost:3002",
       };
 
-      for (const [serviceName, fallbackUrl] of Object.entries(serviceUrls)) {
+      for (const [serviceName] of Object.entries(serviceUrls)) {
         try {
           const serviceUrl = serviceUrls[serviceName];
           const response = await axios.get(`${serviceUrl}/health`, {
@@ -282,9 +252,7 @@ class ApiGateway {
 
   async getRegistry(req, res) {
     try {
-      console.log("Buscando registry...");
       const services = await serviceRegistry.getAllServices();
-      console.log("Registry encontrado:", Object.keys(services));
 
       res.json({
         success: true,
@@ -301,24 +269,15 @@ class ApiGateway {
     }
   }
 
-  // Proxy requests to services
   proxyToService(serviceName) {
     return async (req, res) => {
-      console.log("=== DEBUG PROXY ===");
-      console.log("Service Name:", serviceName);
-      console.log("Original URL:", req.originalUrl);
-      console.log("Method:", req.method);
-      console.log("==================");
 
-      // Check circuit breaker
       if (this.circuitBreakers[serviceName]?.state === "OPEN") {
         const timeSinceLastFailure =
           Date.now() - this.circuitBreakers[serviceName].lastFailure;
 
-        // Reduzir de 30s para 5s para testes
         if (timeSinceLastFailure > 5000) {
           this.circuitBreakers[serviceName].state = "HALF-OPEN";
-          console.log(`🔄 Circuit breaker HALF-OPEN for ${serviceName}`);
         } else {
           return res.status(503).json({
             success: false,
@@ -331,11 +290,6 @@ class ApiGateway {
 
       try {
         const serviceUrl = this.getServiceUrl(serviceName);
-
-        console.log(
-          `[GATEWAY] Proxying ${req.method} ${req.originalUrl} to ${serviceName}`
-        );
-        console.log(`🔗 Target service URL: ${serviceUrl}`);
 
         if (!serviceUrl) {
           return res.status(503).json({
@@ -369,7 +323,6 @@ class ApiGateway {
         }
 
         const targetUrl = `${serviceUrl}${targetPath}`;
-        console.log(`Final target URL: ${targetUrl}`);
 
         const response = await axios({
           method: req.method,
@@ -382,7 +335,6 @@ class ApiGateway {
           timeout: 10000,
         });
 
-        // Reset circuit breaker on success
         if (this.circuitBreakers[serviceName]?.state === "HALF-OPEN") {
           this.circuitBreakers[serviceName].state = "CLOSED";
           this.circuitBreakers[serviceName].failures = 0;
@@ -617,12 +569,10 @@ class ApiGateway {
 
   start() {
     this.app.listen(this.port, () => {
-      console.log("=====================================");
       console.log(`API Gateway iniciado na porta ${this.port}`);
       console.log(`URL: ${this.serviceUrl}`);
       console.log(`Health: ${this.serviceUrl}/health`);
       console.log(`Registry: ${this.serviceUrl}/registry`);
-      console.log("=====================================");
     });
   }
 }

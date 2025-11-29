@@ -18,7 +18,7 @@ class ConnectivityService with ChangeNotifier {
 
   Future<void> _init() async {
     await _checkConnection();
-    
+
     _connectionTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
       await _checkConnection();
     });
@@ -31,33 +31,34 @@ class ConnectivityService with ChangeNotifier {
 
   Future<bool> _checkConnection() async {
     if (_isChecking) return _isConnected;
-    
+
     _isChecking = true;
     notifyListeners();
 
     try {
       final connectivityResult = await _connectivity.checkConnectivity();
       bool connectivityStatus = connectivityResult != ConnectivityResult.none;
-      
+
       bool realConnection = await _testRealConnection();
-      
+
       final newStatus = connectivityStatus && realConnection;
-      
+
       if (newStatus != _isConnected) {
-        print('Status de conexão mudou: ${_isConnected ? "Online" : "Offline"} -> ${newStatus ? "Online" : "Offline"}');
+        print(
+          'Status de conexão mudou: ${_isConnected ? "Online" : "Offline"} -> ${newStatus ? "Online" : "Offline"}',
+        );
         _isConnected = newStatus;
         notifyListeners();
-        
+
         if (_isConnected) {
           _onConnectionRestored();
         } else {
           _onConnectionLost();
         }
       }
-      
+
       return _isConnected;
     } catch (e) {
-      print('Erro ao verificar conectividade: $e');
       if (_isConnected) {
         _isConnected = false;
         notifyListeners();
@@ -75,10 +76,9 @@ class ConnectivityService with ChangeNotifier {
       final response = await http
           .get(Uri.parse('http://10.0.2.2:3000/health'))
           .timeout(Duration(seconds: 3));
-      
+
       return response.statusCode == 200;
     } catch (e) {
-      print('Teste de conexão real falhou: $e');
       return false;
     }
   }
@@ -95,7 +95,6 @@ class ConnectivityService with ChangeNotifier {
     return await _checkConnection();
   }
 
-  // Método para forçar verificação
   Future<void> forceCheck() async {
     await _checkConnection();
   }

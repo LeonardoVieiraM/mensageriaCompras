@@ -146,7 +146,6 @@ class ShoppingItemCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Controle de Quantidade
         Container(
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
@@ -176,10 +175,8 @@ class ShoppingItemCard extends StatelessWidget {
 
         const SizedBox(width: 8),
 
-        // Status de sincronização
         _buildSyncStatus(),
 
-        // Botão Remover
         IconButton(
           icon: const Icon(Icons.delete_outline, color: Colors.red),
           onPressed: onRemove,

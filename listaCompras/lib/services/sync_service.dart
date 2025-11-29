@@ -35,8 +35,7 @@ class SyncService {
 
       _notifyProgress('Iniciando sincronização...');
 
-      final stats = await _dbService.getSyncStats();
-      print('Estatísticas de sincronização: $stats');
+      await _dbService.getSyncStats();
 
       final queueSuccess = await _processSyncQueue();
 
@@ -55,7 +54,6 @@ class SyncService {
       onSyncComplete?.call(success);
       return success;
     } catch (e) {
-      print('Erro crítico na sincronização: $e');
       _notifyProgress('Erro na sincronização: $e');
       onSyncComplete?.call(false);
       return false;
@@ -91,20 +89,15 @@ class SyncService {
         if (success) {
           await _dbService.removeFromSyncQueue(item['id']);
           processed++;
-          print('$action concluído: $recordId');
         } else {
           await _dbService.updateRetryCount(item['id'], retryCount + 1);
           failed++;
 
           if (retryCount >= 2) {
-            print('Removendo da fila após 3 tentativas: $recordId');
             await _dbService.removeFromSyncQueue(item['id']);
-          } else {
-            print('$action falhou, tentativa ${retryCount + 1}: $recordId');
           }
         }
       } catch (e) {
-        print('Erro ao processar item da fila: $e');
         failed++;
         final retryCount = (item['retryCount'] ?? 0) + 1;
         await _dbService.updateRetryCount(item['id'], retryCount);
@@ -135,11 +128,9 @@ class SyncService {
         case 'DELETE_ITEM':
           return await _syncDeleteItem(data);
         default:
-          print('Ação desconhecida: $action');
           return false;
       }
     } catch (e) {
-      print('Erro na ação $action: $e');
       return false;
     }
   }
@@ -147,19 +138,11 @@ class SyncService {
   Future<bool> _syncCreateList(Map<String, dynamic> data) async {
     try {
       final list = ShoppingList.fromMap(data);
-      final createdList = await ApiService.createShoppingList(
-        list.name,
-        list.description,
-      );
-
-      if (createdList.id != list.id) {
-        print('Lista criada no servidor com ID: ${createdList.id}');
-      }
+      await ApiService.createShoppingList(list.name, list.description);
 
       await _dbService.markListAsSynced(list.id);
       return true;
     } catch (e) {
-      print('Erro ao sincronizar criação de lista: $e');
       return false;
     }
   }
@@ -173,10 +156,8 @@ class SyncService {
     } catch (e) {
       if (e.toString().contains('não encontrada') ||
           e.toString().contains('404')) {
-        print('Lista não encontrada no servidor, criando...');
         return await _syncCreateList(data);
       }
-      print('Erro ao sincronizar atualização de lista: $e');
       return false;
     }
   }
@@ -189,10 +170,8 @@ class SyncService {
       if (e.toString().contains('não encontrada') ||
           e.toString().contains('404') ||
           e.toString().contains('Falha ao excluir lista')) {
-        print('Lista já não existe no servidor ou não foi encontrada');
         return true;
       }
-      print('Erro ao sincronizar exclusão de lista: $e');
       return false;
     }
   }
@@ -206,7 +185,6 @@ class SyncService {
       await _dbService.markItemAsSynced(item.id);
       return true;
     } catch (e) {
-      print('Erro ao sincronizar criação de item: $e');
       return false;
     }
   }
@@ -222,10 +200,8 @@ class SyncService {
     } catch (e) {
       if (e.toString().contains('não encontrado') ||
           e.toString().contains('404')) {
-        print('Item não encontrado no servidor, criando...');
         return await _syncCreateItem(data);
       }
-      print('Erro ao sincronizar atualização de item: $e');
       return false;
     }
   }
@@ -240,10 +216,8 @@ class SyncService {
     } catch (e) {
       if (e.toString().contains('não encontrado') ||
           e.toString().contains('404')) {
-        print('Item já não existe no servidor');
         return true;
       }
-      print('Erro ao sincronizar exclusão de item: $e');
       return false;
     }
   }
@@ -256,33 +230,25 @@ class SyncService {
       int listSuccess = 0;
 
       for (var list in unsyncedLists) {
-        try {
-          await ApiService.updateShoppingList(list);
-          await _dbService.markListAsSynced(list.id);
-          listSuccess++;
-        } catch (e) {
-          print('Erro ao sincronizar lista ${list.id}: $e');
-        }
+        await ApiService.updateShoppingList(list);
+        await _dbService.markListAsSynced(list.id);
+        listSuccess++;
       }
 
       final unsyncedItems = await _dbService.getUnsyncedItems();
       int itemSuccess = 0;
 
       for (var item in unsyncedItems) {
-        try {
-          final lists = await _dbService.getLists();
-          final list = lists.firstWhere(
-            (l) => l.items.any((i) => i.id == item.id),
-            orElse: () =>
-                lists.isNotEmpty ? lists.first : ShoppingList(name: 'Temp'),
-          );
+        final lists = await _dbService.getLists();
+        final list = lists.firstWhere(
+          (l) => l.items.any((i) => i.id == item.id),
+          orElse: () =>
+              lists.isNotEmpty ? lists.first : ShoppingList(name: 'Temp'),
+        );
 
-          await ApiService.updateItemInList(list.id, item);
-          await _dbService.markItemAsSynced(item.id);
-          itemSuccess++;
-        } catch (e) {
-          print('Erro ao sincronizar item ${item.id}: $e');
-        }
+        await ApiService.updateItemInList(list.id, item);
+        await _dbService.markItemAsSynced(item.id);
+        itemSuccess++;
       }
 
       _notifyProgress(
@@ -290,7 +256,6 @@ class SyncService {
       );
       return true;
     } catch (e) {
-      print('Erro ao sincronizar dados não sincronizados: $e');
       return false;
     }
   }
@@ -298,39 +263,35 @@ class SyncService {
   Future<void> _checkForConflicts() async {
     _notifyProgress('Verificando conflitos...');
 
-    try {
-      final serverLists = await ApiService.getShoppingLists();
-      final localLists = await _dbService.getLists();
+    final serverLists = await ApiService.getShoppingLists();
+    final localLists = await _dbService.getLists();
 
-      int conflicts = 0;
+    int conflicts = 0;
 
-      for (var serverList in serverLists) {
-        final localList = localLists.firstWhere(
-          (l) => l.id == serverList.id,
-          orElse: () => ShoppingList(name: ''),
-        );
+    for (var serverList in serverLists) {
+      final localList = localLists.firstWhere(
+        (l) => l.id == serverList.id,
+        orElse: () => ShoppingList(name: ''),
+      );
 
-        if (localList.name.isNotEmpty) {
-          final serverUpdated = DateTime.parse(serverList.updatedAt.toString());
-          final localUpdated = localList.updatedAt;
+      if (localList.name.isNotEmpty) {
+        final serverUpdated = DateTime.parse(serverList.updatedAt.toString());
+        final localUpdated = localList.updatedAt;
 
-          if (serverUpdated.isAfter(localUpdated)) {
-            conflicts++;
-            await _resolveConflict(serverList, localList, 'server_wins');
-          } else if (localUpdated.isAfter(serverUpdated)) {
-            conflicts++;
-            await _resolveConflict(localList, serverList, 'local_wins');
-          }
+        if (serverUpdated.isAfter(localUpdated)) {
+          conflicts++;
+          await _resolveConflict(serverList, localList, 'server_wins');
+        } else if (localUpdated.isAfter(serverUpdated)) {
+          conflicts++;
+          await _resolveConflict(localList, serverList, 'local_wins');
         }
       }
+    }
 
-      if (conflicts > 0) {
-        _notifyProgress('$conflicts conflitos resolvidos');
-      } else {
-        _notifyProgress('Nenhum conflito detectado');
-      }
-    } catch (e) {
-      print('Erro ao verificar conflitos: $e');
+    if (conflicts > 0) {
+      _notifyProgress('$conflicts conflitos resolvidos');
+    } else {
+      _notifyProgress('Nenhum conflito detectado');
     }
   }
 
@@ -339,8 +300,6 @@ class SyncService {
     ShoppingList losingList,
     String resolution,
   ) async {
-    print('Resolvendo conflito: $resolution');
-
     if (resolution == 'server_wins') {
       await _dbService.updateList(winningList, isSynced: true);
     } else {
@@ -348,8 +307,6 @@ class SyncService {
       await _dbService.markListAsSynced(winningList.id);
     }
   }
-
-  // ========== MÉTODOS AUXILIARES ==========
 
   String _getEntityName(String tableName) {
     switch (tableName) {
@@ -363,11 +320,8 @@ class SyncService {
   }
 
   void _notifyProgress(String message) {
-    print('[SYNC] $message');
     onSyncProgress?.call(message);
   }
-
-  // ========== MÉTODOS PÚBLICOS PARA UI ==========
 
   Future<Map<String, dynamic>> getSyncStatus() async {
     final stats = await _dbService.getSyncStats();

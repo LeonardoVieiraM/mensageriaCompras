@@ -61,7 +61,6 @@ class ShoppingListCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Ícone de status de sincronização
             if (!isSynced)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -117,19 +116,19 @@ class ShoppingListCard extends StatelessWidget {
             ),
           ],
         ),
-        if (list.updatedAt != null) ...[
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.update, size: 12, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text(
-                'Atualizada: ${_formatDate(list.updatedAt)}',
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-            ],
-          ),
-        ],
+        ...[
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(Icons.update, size: 12, color: Colors.grey),
+            const SizedBox(width: 4),
+            Text(
+              'Atualizada: ${_formatDate(list.updatedAt)}',
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+      ],
       ],
     );
   }

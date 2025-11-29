@@ -56,7 +56,6 @@ class AnalyticsService {
   }
 
   async handleCheckoutEvent(message) {
-    console.log(`\n[ANALYTICS-SERVICE] PROCESSANDO ANALYTICS:`);
     console.log(`   Lista: ${message.listId}`);
     console.log(`   Valor: R$ ${message.total}`);
     console.log(`   Itens: ${message.items.length}`);
@@ -69,7 +68,6 @@ class AnalyticsService {
     this.stats.lastCheckout = message.timestamp;
 
     // Simular processamento de analytics
-    console.log("[ANALYTICS-SERVICE] Processando analytics...");
     await this.delay(800);
 
     console.log("[ANALYTICS-SERVICE] Estatísticas atualizadas:");
@@ -85,16 +83,13 @@ class AnalyticsService {
 
   start() {
     this.app.listen(this.port, () => {
-      console.log("=====================================");
       console.log(`Analytics Service iniciado na porta ${this.port}`);
       console.log(`URL: http://localhost:${this.port}`);
       console.log(`Consumer: list.checkout.#`);
-      console.log("=====================================");
     });
   }
 }
 
-// Start service
 if (require.main === module) {
   const service = new AnalyticsService();
   service.start();

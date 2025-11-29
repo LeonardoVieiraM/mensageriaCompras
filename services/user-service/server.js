@@ -54,10 +54,6 @@ class UserService {
             role: "admin",
             status: "active",
           });
-
-          console.log(
-            "Usuário administrador criado (admin@shopping.com / admin123)"
-          );
         }
       } catch (error) {
         console.error("Erro ao criar dados iniciais:", error);
@@ -167,16 +163,10 @@ class UserService {
 
     try {
       const token = authHeader.replace("Bearer ", "");
-
-      console.log("[USER-SERVICE] Validando token...");
-
       const decoded = jwt.verify(
         token,
         process.env.JWT_SECRET || "user-secret"
       );
-
-      console.log("[USER-SERVICE] Token válido para usuário:", decoded.id);
-
       req.user = decoded;
       next();
     } catch (error) {
@@ -470,12 +460,10 @@ class UserService {
 
   start() {
     this.app.listen(this.port, () => {
-      console.log("=====================================");
       console.log(`User Service iniciado na porta ${this.port}`);
       console.log(`URL: ${this.serviceUrl}`);
       console.log(`Health: ${this.serviceUrl}/health`);
       console.log(`Database: JSON-NoSQL`);
-      console.log("=====================================");
 
       setTimeout(() => {
         this.registerWithRegistry();
@@ -490,7 +478,6 @@ if (require.main === module) {
   userService.start();
 
   process.on("SIGTERM", async () => {
-    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }
@@ -498,7 +485,6 @@ if (require.main === module) {
   });
 
   process.on("SIGINT", async () => {
-    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }

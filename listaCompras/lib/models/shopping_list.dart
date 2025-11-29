@@ -5,7 +5,7 @@ class ShoppingList {
   final String id;
   final String name;
   final String description;
-  final String status; // active, completed, cancelled
+  final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<ShoppingItem> items;
@@ -40,17 +40,12 @@ class ShoppingList {
 
   factory ShoppingList.fromMap(Map<String, dynamic> map) {
     try {
-      print('🔄 [SHOPPING-LIST] Convertendo map para ShoppingList');
-      print('📦 Map data: $map');
-      
-      // ✅ Converte items de List<dynamic> para List<ShoppingItem>
       List<ShoppingItem> items = [];
       if (map['items'] != null) {
         final itemsData = map['items'] as List<dynamic>;
         items = itemsData.map((itemData) {
           return ShoppingItem.fromMap(itemData as Map<String, dynamic>);
         }).toList();
-        print('✅ Convertidos ${items.length} items');
       }
 
       return ShoppingList(
@@ -58,19 +53,18 @@ class ShoppingList {
         name: map['name'] as String? ?? '',
         description: map['description'] as String? ?? '',
         status: map['status'] as String? ?? 'active',
-        createdAt: map['createdAt'] != null 
+        createdAt: map['createdAt'] != null
             ? DateTime.parse(map['createdAt'] as String)
             : DateTime.now(),
         updatedAt: map['updatedAt'] != null
             ? DateTime.parse(map['updatedAt'] as String)
             : DateTime.now(),
         items: items,
-        estimatedTotal: (map['estimatedTotal'] ?? 
-                        map['summary']?['estimatedTotal'] ?? 0.0).toDouble(),
+        estimatedTotal:
+            (map['estimatedTotal'] ?? map['summary']?['estimatedTotal'] ?? 0.0)
+                .toDouble(),
       );
     } catch (e) {
-      print('❌ Erro no fromMap ShoppingList: $e');
-      print('❌ Map data: $map');
       rethrow;
     }
   }

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:async';
-
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/shopping_list.dart';
@@ -27,7 +26,6 @@ class DatabaseService {
       version: 1,
       onCreate: _createTables,
       onConfigure: (db) async {
-        // Ativar chaves estrangeiras
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
@@ -168,17 +166,13 @@ class DatabaseService {
 
     try {
       await db.delete('shopping_items', where: 'listId = ?', whereArgs: [id]);
-
       final result = await db.delete(
         'shopping_lists',
         where: 'id = ?',
         whereArgs: [id],
       );
-
-      print('Lista $id excluída do banco local');
       return result;
     } catch (e) {
-      print('Erro ao excluir lista $id: $e');
       rethrow;
     }
   }
@@ -193,7 +187,7 @@ class DatabaseService {
 
     await db.insert('shopping_items', {
       'id': item.id,
-      'listId': listId ?? item.productId, // fallback
+      'listId': listId ?? item.productId,
       'productId': item.productId,
       'name': item.name,
       'category': item.category,

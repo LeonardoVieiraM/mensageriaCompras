@@ -10,12 +10,9 @@ class ServiceRegistry {
 
   initializeRegistry() {
     try {
-      console.log(`Registry file path: ${REGISTRY_FILE}`);
       if (!fs.existsSync(REGISTRY_FILE)) {
         fs.writeJsonSync(REGISTRY_FILE, {}, { spaces: 2 });
-        console.log("Arquivo registry criado:", REGISTRY_FILE);
       } else {
-        console.log("Arquivo registry já existe:", REGISTRY_FILE);
       }
     } catch (error) {
       console.error("Erro ao inicializar registry:", error.message);
@@ -35,7 +32,6 @@ class ServiceRegistry {
       }
 
       const data = JSON.parse(fileContent);
-      console.log("Registry content:", Object.keys(data));
       return data;
     } catch (error) {
       console.error("Erro ao ler registry:", error.message);
@@ -53,13 +49,7 @@ class ServiceRegistry {
 
   async register(serviceName, serviceInfo) {
     try {
-      console.log(`=== REGISTRO DE SERVIÇO ===`);
-      console.log(`Serviço: ${serviceName}`);
-      console.log(`URL: ${serviceInfo.url}`);
-      console.log(`Caminho do arquivo: ${REGISTRY_FILE}`);
-
       const services = await this.#readRegistry();
-      console.log(`Registry atual:`, Object.keys(services));
 
       services[serviceName] = {
         ...serviceInfo,
@@ -69,7 +59,6 @@ class ServiceRegistry {
       };
 
       await this.#writeRegistry(services);
-      console.log(`Serviço ${serviceName} registrado com sucesso!`);
       return true;
     } catch (error) {
       console.error(`Erro ao registrar ${serviceName}:`, error.message);
@@ -81,8 +70,6 @@ class ServiceRegistry {
   async discover(serviceName) {
     try {
       const services = await this.#readRegistry();
-      console.log(`Services in registry:`, Object.keys(services));
-
       const service = services[serviceName];
 
       if (!service) {
@@ -94,8 +81,6 @@ class ServiceRegistry {
         console.warn(`Serviço não saudável: ${serviceName}`);
         return null;
       }
-
-      console.log(`Serviço encontrado: ${serviceName} -> ${service.url}`);
       return service;
     } catch (error) {
       console.error("Erro ao descobrir serviço:", error.message);
@@ -115,10 +100,7 @@ class ServiceRegistry {
 
         if (!isHealthy) {
           console.warn(`Serviço marcado como não saudável: ${serviceName}`);
-        } else {
-          console.log(`Serviço marcado como saudável: ${serviceName}`);
         }
-
         return true;
       }
       return false;
@@ -131,10 +113,6 @@ class ServiceRegistry {
   async getAllServices() {
     try {
       const services = await this.#readRegistry();
-      console.log(
-        "getAllServices - Services no registry:",
-        Object.keys(services)
-      );
       return services;
     } catch (error) {
       console.error("Erro ao obter todos os serviços:", error.message);
@@ -149,7 +127,6 @@ class ServiceRegistry {
       if (services[serviceName]) {
         delete services[serviceName];
         await this.#writeRegistry(services);
-        console.log(`Serviço ${serviceName} removido do registry`);
         return true;
       }
       return false;
@@ -170,7 +147,6 @@ class ServiceRegistry {
         const diffMinutes = (now - lastCheck) / (1000 * 60);
 
         if (diffMinutes > 2) {
-          console.log(`Removendo serviço inativo: ${serviceName}`);
           delete services[serviceName];
           cleaned = true;
         }

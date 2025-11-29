@@ -47,13 +47,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
           setState(() {
             _categories = categories;
           });
-          print('Categorias carregadas online: ${categories.length}');
         } catch (e) {
-          print('Erro ao carregar categorias online: $e');
           _loadLocalCategories();
         }
       } else {
-        print('Carregando categorias locais');
         _loadLocalCategories();
       }
     } catch (e) {
@@ -66,14 +63,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   void _loadLocalCategories() {
     setState(() {
-      _categories = [
-        'Alimentos',
-        'Bebidas',
-        'Limpeza',
-        'Higiene',
-      ];
+      _categories = ['Alimentos', 'Bebidas', 'Limpeza', 'Higiene'];
     });
-    print('Categorias locais carregadas: ${_categories.length}');
   }
 
   Future<void> _searchProducts(String query) async {
@@ -92,13 +83,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
           setState(() {
             _searchResults = results;
           });
-          print('Busca online: ${results.length} resultados');
         } catch (e) {
-          print('Servidor offline, buscando localmente: $e');
           await _searchLocalProducts(query);
         }
       } else {
-        print('Modo offline, buscando localmente');
         await _searchLocalProducts(query);
       }
     } catch (e) {
@@ -127,7 +115,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
         print('Tabela shopping_items não encontrada, usando dados de exemplo');
       }
 
-      // Se não encontrou resultados, usa exemplo
       if (localResults.isEmpty) {
         final sampleItems = [
           {
@@ -195,10 +182,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       setState(() {
         _searchResults = localResults;
       });
-
-      print('Busca local: ${localResults.length} resultados');
     } catch (e) {
-      print('Erro na busca local: $e');
       setState(() => _searchResults = []);
     }
   }
@@ -218,14 +202,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
         unit: product['unit'] ?? 'un',
       );
 
-      // Salvar localmente primeiro
       await widget.databaseService.insertItem(
         item,
         listId: widget.listId,
         isSynced: false,
       );
 
-      // Adicionar à fila de sincronização
       await widget.databaseService.addToSyncQueue(
         action: 'CREATE_ITEM',
         tableName: 'shopping_items',
@@ -233,7 +215,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
         data: {...item.toMap(), 'listId': widget.listId},
       );
 
-      // Sincronizar se online
       if (widget.connectivityService.isConnected &&
           !widget.syncService.isSyncing) {
         await widget.syncService.syncPendingChanges();
@@ -269,7 +250,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
       ),
       body: Column(
         children: [
-          // Barra de Pesquisa
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -294,7 +274,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
             ),
           ),
 
-          // Indicador de status offline
           if (!widget.connectivityService.isConnected)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -337,7 +316,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
               ),
             ),
 
-          // Resultados da Busca
           Expanded(
             child: _isSearching
                 ? const Center(child: CircularProgressIndicator())

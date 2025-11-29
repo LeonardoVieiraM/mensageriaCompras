@@ -43,7 +43,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   Future<void> _refreshList() async {
     setState(() => _isLoading = true);
     try {
-      // Primeiro tenta carregar do servidor se online
       if (widget.connectivityService.isConnected) {
         try {
           final lists = await ApiService.getShoppingLists();
@@ -55,8 +54,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             _list = updatedList;
           });
         } catch (e) {
-          // Se servidor falhar, usa dados locais
-          print('Servidor indisponível, usando dados locais: $e');
           final localLists = await widget.databaseService.getLists();
           final localList = localLists.firstWhere(
             (l) => l.id == _list.id,
@@ -67,7 +64,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           });
         }
       } else {
-        // Offline: usa apenas dados locais
         final localLists = await widget.databaseService.getLists();
         final localList = localLists.firstWhere(
           (l) => l.id == _list.id,
@@ -105,11 +101,8 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   Future<void> _toggleItemPurchase(ShoppingItem item) async {
     try {
       final updatedItem = item.copyWith(purchased: !item.purchased);
-
-      // Atualizar localmente primeiro
       await widget.databaseService.updateItem(updatedItem, isSynced: false);
 
-      // Atualizar UI localmente
       setState(() {
         _list = _list.copyWith(
           items: _list.items
@@ -118,7 +111,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         );
       });
 
-      // Adicionar à fila de sincronização
       await widget.databaseService.addToSyncQueue(
         action: 'UPDATE_ITEM',
         tableName: 'shopping_items',
@@ -126,7 +118,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         data: {...updatedItem.toMap(), 'listId': _list.id},
       );
 
-      // Sincronizar se online
       if (widget.connectivityService.isConnected &&
           !widget.syncService.isSyncing) {
         await widget.syncService.syncPendingChanges();
@@ -144,11 +135,8 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
     try {
       final updatedItem = item.copyWith(quantity: newQuantity);
-
-      // Atualizar localmente primeiro
       await widget.databaseService.updateItem(updatedItem, isSynced: false);
 
-      // Atualizar UI localmente
       setState(() {
         _list = _list.copyWith(
           items: _list.items
@@ -156,8 +144,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               .toList(),
         );
       });
-
-      // Adicionar à fila de sincronização
       await widget.databaseService.addToSyncQueue(
         action: 'UPDATE_ITEM',
         tableName: 'shopping_items',
@@ -165,7 +151,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         data: {...updatedItem.toMap(), 'listId': _list.id},
       );
 
-      // Sincronizar se online
       if (widget.connectivityService.isConnected &&
           !widget.syncService.isSyncing) {
         await widget.syncService.syncPendingChanges();
@@ -197,17 +182,12 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
     if (confirmed == true) {
       try {
-        // ✅ Atualizar a lista localmente primeiro para melhor UX
         setState(() {
           _list = _list.copyWith(
             items: _list.items.where((i) => i.id != item.id).toList(),
           );
         });
-
-        // Remover do banco local
         await widget.databaseService.deleteItem(item.id);
-
-        // Adicionar à fila de sincronização
         await widget.databaseService.addToSyncQueue(
           action: 'DELETE_ITEM',
           tableName: 'shopping_items',
@@ -215,7 +195,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           data: {'itemId': item.id, 'listId': _list.id},
         );
 
-        // Sincronizar se online
         if (widget.connectivityService.isConnected &&
             !widget.syncService.isSyncing) {
           await widget.syncService.syncPendingChanges();
@@ -223,11 +202,8 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
         _showSuccessSnackbar('Item removido');
       } catch (e) {
-        // ✅ Reverter se houver erro
         setState(() {
-          _list = _list.copyWith(
-            items: [..._list.items, item], // Re-adiciona o item
-          );
+          _list = _list.copyWith(items: [..._list.items, item]);
         });
         _showErrorSnackbar('Erro ao remover item: $e');
       }
@@ -265,11 +241,9 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
     if (confirmed == true) {
       try {
-        // Marcar lista como concluída localmente
         final completedList = _list.copyWith(status: 'completed');
         await widget.databaseService.updateList(completedList, isSynced: false);
 
-        // Adicionar checkout à fila de sincronização
         await widget.databaseService.addToSyncQueue(
           action: 'CHECKOUT_LIST',
           tableName: 'shopping_lists',
@@ -277,7 +251,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           data: completedList.toMap(),
         );
 
-        // Executar checkout no servidor se online
         if (widget.connectivityService.isConnected) {
           await ApiService.checkoutList(_list.id);
           await widget.databaseService.markListAsSynced(_list.id);
@@ -286,12 +259,11 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         await _refreshList();
         _showSuccessSnackbar('Checkout realizado! Processando...');
 
-        // Mostrar mensagem sobre processamento assíncrono
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                '✅ Checkout iniciado! Notificação e analytics em processamento...',
+                'Checkout iniciado! Notificação e analytics em processamento...',
               ),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
@@ -343,7 +315,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
       body: Column(
         children: [
-          // Header com estatísticas
           Container(
             padding: const EdgeInsets.all(16),
             color: Colors.grey.shade50,
@@ -365,7 +336,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             ),
           ),
 
-          // Lista de Itens
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -375,7 +345,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                     onRefresh: _refreshList,
                     child: CustomScrollView(
                       slivers: [
-                        // Itens Pendentes
                         if (pendingItems.isNotEmpty)
                           SliverToBoxAdapter(
                             child: Padding(
@@ -407,7 +376,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                           }, childCount: pendingItems.length),
                         ),
 
-                        // Itens Comprados
                         if (purchasedItems.isNotEmpty)
                           SliverToBoxAdapter(
                             child: Padding(

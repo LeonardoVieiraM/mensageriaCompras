@@ -25,7 +25,6 @@ class RabbitMQService {
 
             this.connection.on('close', () => {
                 this.isConnected = false;
-                console.log('Conexão RabbitMQ fechada');
                 setTimeout(() => this.connect(), 5000);
             });
 
@@ -49,7 +48,6 @@ class RabbitMQService {
             );
             
             if (result) {
-                console.log(`Mensagem publicada: ${exchange} -> ${routingKey}`);
             } else {
                 throw new Error('Falha ao publicar mensagem');
             }
@@ -68,16 +66,12 @@ class RabbitMQService {
             const q = await this.channel.assertQueue(queue, {
                 durable: true
             });
-
             await this.channel.bindQueue(q.queue, 'shopping_events', routingKey);
-
-            console.log(`Consumer aguardando mensagens: ${queue} [${routingKey}]`);
 
             await this.channel.consume(q.queue, async (msg) => {
                 if (msg !== null) {
                     try {
                         const content = JSON.parse(msg.content.toString());
-                        console.log(`Mensagem recebida: ${routingKey}`);
                         
                         await callback(content);
                         

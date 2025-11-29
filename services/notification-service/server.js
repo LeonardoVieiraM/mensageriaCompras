@@ -58,9 +58,7 @@ class NotificationService {
       );
     });
 
-    console.log("[NOTIFICATION-SERVICE] Enviando comprovante por email...");
     await this.delay(1000);
-    console.log("[NOTIFICATION-SERVICE] Comprovante enviado com sucesso!\n");
   }
 
   delay(ms) {
@@ -69,11 +67,9 @@ class NotificationService {
 
   start() {
     this.app.listen(this.port, () => {
-      console.log("=====================================");
       console.log(`Notification Service iniciado na porta ${this.port}`);
       console.log(`URL: http://localhost:${this.port}`);
       console.log(`Consumer: list.checkout.#`);
-      console.log("=====================================");
     });
   }
 }

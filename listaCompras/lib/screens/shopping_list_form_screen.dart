@@ -47,16 +47,11 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
 
     try {
       if (widget.list == null) {
-        // Criar nova lista - salvar localmente primeiro
         final newList = ShoppingList(
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
         );
-
-        // Salvar no banco local
         await widget.databaseService.insertList(newList, isSynced: false);
-
-        // Adicionar à fila de sincronização
         await widget.databaseService.addToSyncQueue(
           action: 'CREATE_LIST',
           tableName: 'shopping_lists',
@@ -64,7 +59,6 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
           data: newList.toMap(),
         );
 
-        // Sincronizar se online
         if (widget.connectivityService.isConnected &&
             !widget.syncService.isSyncing) {
           await widget.syncService.syncPendingChanges();
@@ -80,16 +74,11 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
           );
         }
       } else {
-        // Atualizar lista existente
         final updatedList = widget.list!.copyWith(
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
         );
-
-        // Atualizar localmente
         await widget.databaseService.updateList(updatedList, isSynced: false);
-
-        // Adicionar à fila de sincronização
         await widget.databaseService.addToSyncQueue(
           action: 'UPDATE_LIST',
           tableName: 'shopping_lists',
@@ -97,7 +86,6 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
           data: updatedList.toMap(),
         );
 
-        // Sincronizar se online
         if (widget.connectivityService.isConnected &&
             !widget.syncService.isSyncing) {
           await widget.syncService.syncPendingChanges();
@@ -152,7 +140,6 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Campo Nome
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -176,7 +163,6 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Campo Descrição
                     TextFormField(
                       controller: _descriptionController,
                       decoration: const InputDecoration(
@@ -193,7 +179,6 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Botão Salvar
                     ElevatedButton.icon(
                       onPressed: _saveList,
                       icon: const Icon(Icons.save),
@@ -212,7 +197,6 @@ class _ShoppingListFormScreenState extends State<ShoppingListFormScreen> {
 
                     const SizedBox(height: 8),
 
-                    // Botão Cancelar
                     OutlinedButton.icon(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.cancel),

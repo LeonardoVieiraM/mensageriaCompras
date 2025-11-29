@@ -50,14 +50,11 @@ class ShoppingItem {
 
   factory ShoppingItem.fromMap(Map<String, dynamic> map) {
     try {
-      print('🔄 [SHOPPING-ITEM] Convertendo map para ShoppingItem');
-      print('📦 Map data: $map');
-
       String itemId =
           map['id'] as String? ?? map['itemId'] as String? ?? const Uuid().v4();
 
       return ShoppingItem(
-        id: itemId, 
+        id: itemId,
         productId:
             map['itemId'] as String? ?? map['productId'] as String? ?? '',
         name: map['itemName'] as String? ?? map['name'] as String? ?? '',
@@ -76,8 +73,6 @@ class ShoppingItem {
             : DateTime.now(),
       );
     } catch (e) {
-      print('❌ Erro no fromMap ShoppingItem: $e');
-      print('❌ Map data: $map');
       rethrow;
     }
   }

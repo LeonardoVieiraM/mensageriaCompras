@@ -5,12 +5,8 @@ const morgan = require("morgan");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 const axios = require("axios");
-
 const JsonDatabase = require("../../shared/JsonDatabase");
 const serviceRegistry = require("../../shared/serviceRegistry");
-
-console.log("Item Service iniciando...");
-console.log("Porta:", process.env.PORT || 3003);
 
 class ItemService {
   constructor() {
@@ -28,12 +24,10 @@ class ItemService {
   setupDatabase() {
     const dbPath = path.join(__dirname, "database");
     this.itemsDb = new JsonDatabase(dbPath, "items");
-    console.log("Item Service: Banco NoSQL inicializado");
   }
 
   async seedInitialData() {
     try {
-      console.log("Verificando dados iniciais...");
       const existingItems = await this.itemsDb.find();
       console.log(`Itens existentes: ${existingItems.length}`);
 
@@ -296,7 +290,7 @@ class ItemService {
 
         console.log("Itens de exemplo criados no Item Service");
       } else {
-        console.log("ℹDados já existem, pulando criação");
+        console.log("Dados já existem, pulando criação");
       }
     } catch (error) {
       console.error("Erro ao criar dados iniciais:", error);
@@ -438,13 +432,10 @@ class ItemService {
 
   async getItems(req, res) {
     try {
-      console.log("Buscando itens...");
       const { page = 1, limit = 10, category, active = true } = req.query;
 
       const filter = { active: active === "true" };
       if (category) filter.category = category;
-
-      console.log("Filtro:", filter);
 
       const items = await this.itemsDb.find(filter, {
         skip: (page - 1) * parseInt(limit),
@@ -606,8 +597,6 @@ class ItemService {
         });
       }
 
-      console.log("[ITEM-SERVICE] Buscando:", { q, category, limit });
-
       const filter = {
         active: true,
       };
@@ -616,12 +605,10 @@ class ItemService {
       if (categories.includes(q)) {
         // Buscar por categoria
         filter.category = q;
-        console.log(`[ITEM-SERVICE] Buscando por categoria: ${q}`);
       } else {
         filter.$regex = q;
         filter.$options = "i";
         filter.$field = "name";
-        console.log(`🔍 [ITEM-SERVICE] Buscando por nome: ${q}`);
       }
 
       if (category && category !== "all") {
@@ -671,12 +658,10 @@ class ItemService {
 
   start() {
     this.app.listen(this.port, () => {
-      console.log("=====================================");
       console.log(`Item Service iniciado na porta ${this.port}`);
       console.log(`URL: ${this.serviceUrl}`);
       console.log(`Health: ${this.serviceUrl}/health`);
       console.log(`Database: JSON-NoSQL`);
-      console.log("=====================================");
 
       this.registerWithRegistry();
       this.startHealthReporting();
@@ -692,9 +677,7 @@ if (require.main === module) {
   const itemService = new ItemService();
   itemService.start();
 
-  // Graceful shutdown
   process.on("SIGTERM", async () => {
-    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }

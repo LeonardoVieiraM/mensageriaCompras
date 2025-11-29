@@ -38,10 +38,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Future<void> _loadLists() async {
     setState(() => _isLoading = true);
     try {
-      // Primeiro carrega do banco local
       final localLists = await widget.databaseService.getLists();
 
-      // Se estiver online, tenta sincronizar e carregar do servidor
       if (widget.connectivityService.isConnected) {
         try {
           final serverLists = await ApiService.getShoppingLists();
@@ -50,20 +48,16 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             _lists.addAll(serverLists);
           });
 
-          // Sincronizar quaisquer mudanças pendentes
           if (!widget.syncService.isSyncing) {
             await widget.syncService.syncPendingChanges();
           }
         } catch (e) {
-          // Se servidor falhar, usa dados locais
-          print('Servidor indisponível, usando dados locais: $e');
           setState(() {
             _lists.clear();
             _lists.addAll(localLists);
           });
         }
       } else {
-        // Offline: usa apenas dados locais
         setState(() {
           _lists.clear();
           _lists.addAll(localLists);
@@ -145,7 +139,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         });
 
         _showErrorSnackbar('Erro ao excluir lista: $e');
-        print('Erro detalhado na exclusão: $e');
       } finally {
         setState(() => _isLoading = false);
       }
@@ -281,7 +274,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               ),
             ),
 
-          // Lista de Compras
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())

@@ -17,7 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _isLogin = true;
 
@@ -30,14 +30,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (_isLogin) {
-        // Login
         final result = await ApiService.login(
           _emailController.text.trim(),
           _passwordController.text,
         );
         widget.onLoginSuccess(result['token'], result['user']);
       } else {
-        // Registro
         final result = await ApiService.register(
           _emailController.text.trim(),
           _usernameController.text.trim(),
@@ -49,10 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -82,8 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               const SizedBox(height: 80),
-              
-              // Logo/Ícone
+
               Container(
                 width: 100,
                 height: 100,
@@ -97,9 +91,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.green,
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               Text(
                 _isLogin ? 'Shopping List' : 'Criar Conta',
                 style: const TextStyle(
@@ -108,22 +102,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.green,
                 ),
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               Text(
-                _isLogin 
+                _isLogin
                     ? 'Faça login para gerenciar suas compras'
                     : 'Crie sua conta para começar',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
-              
+
               const SizedBox(height: 32),
-              
-              // Campos do formulário
+
               if (!_isLogin) ...[
                 TextFormField(
                   controller: _firstNameController,
@@ -171,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-              
+
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -190,9 +180,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _passwordController,
                 decoration: const InputDecoration(
@@ -211,10 +201,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 24),
-              
-              // Botão de ação
+
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -232,10 +221,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(_isLogin ? 'Entrar' : 'Criar Conta'),
                       ),
               ),
-              
+
               const SizedBox(height: 16),
-              
-              // Alternar entre login/registro
+
               TextButton(
                 onPressed: _toggleMode,
                 child: Text(
@@ -245,8 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: Colors.green),
                 ),
               ),
-              
-              // Credenciais de teste
+
               if (_isLogin) ...[
                 const SizedBox(height: 32),
                 const Text(
@@ -260,10 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text(
                   'Email: admin@shopping.com\nSenha: admin123',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ],

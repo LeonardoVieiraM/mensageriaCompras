@@ -38,10 +38,6 @@ class JsonDatabase {
   }
 
   async find(filter = {}, options = {}) {
-    console.log("JsonDatabase find:");
-    console.log("Filter:", JSON.stringify(filter, null, 2));
-    console.log("Options:", options);
-
     let results = [...this.collection];
 
     if (Object.keys(filter).length > 0) {

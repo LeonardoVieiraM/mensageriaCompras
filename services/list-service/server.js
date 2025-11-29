@@ -27,7 +27,6 @@ class ListService {
   setupDatabase() {
     const dbPath = path.join(__dirname, "database");
     this.listsDb = new JsonDatabase(dbPath, "lists");
-    console.log("List Service: Banco NoSQL inicializado");
   }
 
   setupMiddleware() {
@@ -93,17 +92,14 @@ class ListService {
     });
 
     this.app.use(this.authMiddleware.bind(this));
-
     this.app.post("/", this.createList.bind(this));
     this.app.get("/user-lists", this.getLists.bind(this));
     this.app.get("/:id", this.getList.bind(this)); 
     this.app.put("/:id", this.updateList.bind(this)); 
     this.app.delete("/:id", this.deleteList.bind(this)); 
-
     this.app.post("/:id/items", this.addItemToList.bind(this)); 
     this.app.put("/:id/items/:itemId", this.updateItemInList.bind(this)); 
     this.app.delete("/:id/items/:itemId", this.removeItemFromList.bind(this)); 
-
     this.app.get("/:id/summary", this.getListSummary.bind(this)); 
     this.app.post("/:id/checkout", this.checkoutList.bind(this)); 
   }
@@ -175,7 +171,6 @@ class ListService {
     try {
       const rabbitmqService = require("../../shared/rabbitmqService");
       await rabbitmqService.connect();
-      console.log("List Service conectado ao RabbitMQ");
     } catch (error) {
       console.error("Erro ao conectar RabbitMQ:", error.message);
     }
@@ -226,9 +221,6 @@ class ListService {
     try {
       const { status } = req.query;
       const userId = req.user.id;
-
-      console.log("[LIST-SERVICE] Buscando listas para usuário:", userId);
-
       const filter = { userId: userId };
 
       if (status) {
@@ -238,10 +230,6 @@ class ListService {
       const lists = await this.listsDb.find(filter, {
         sort: { updatedAt: -1 },
       });
-
-      console.log(
-        `[LIST-SERVICE] Encontradas ${lists.length} listas para usuário ${userId}`
-      );
 
       res.json({
         success: true,
@@ -593,8 +581,6 @@ class ListService {
       const { id } = req.params;
       const userId = req.user.id;
 
-      console.log("[LIST-SERVICE] Iniciando checkout para lista:", id);
-
       const list = await this.listsDb.findById(id);
       if (!list || list.userId !== userId) {
         return res.status(404).json({
@@ -631,14 +617,6 @@ class ListService {
 
       await this.publishCheckoutEvent(message);
 
-      const updatedList = await this.listsDb.update(id, {
-        status: "completed",
-        completedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-
-      console.log("[LIST-SERVICE] Checkout concluído para lista:", id);
-
       res.status(202).json({
         success: true,
         message: "Checkout iniciado. Processando em background...",
@@ -662,13 +640,9 @@ class ListService {
     try {
       const rabbitmqService = require("../../shared/rabbitmqService");
 
-      console.log("[LIST-SERVICE] Conectando ao RabbitMQ...");
-
       if (!rabbitmqService.isConnected) {
         await rabbitmqService.connect();
       }
-
-      console.log("[LIST-SERVICE] Publicando mensagem...");
 
       await rabbitmqService.publish(
         "shopping_events",
@@ -724,12 +698,10 @@ class ListService {
 
   start() {
     this.app.listen(this.port, () => {
-      console.log("=====================================");
       console.log(`List Service iniciado na porta ${this.port}`);
       console.log(`URL: ${this.serviceUrl}`);
       console.log(`Health: ${this.serviceUrl}/health`);
       console.log(`Database: JSON-NoSQL`);
-      console.log("=====================================");
 
       this.registerWithRegistry();
       this.startHealthReporting();
@@ -737,14 +709,11 @@ class ListService {
   }
 }
 
-// Start service
 if (require.main === module) {
   const listService = new ListService();
   listService.start();
 
-  // Graceful shutdown
   process.on("SIGTERM", async () => {
-    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }
@@ -752,7 +721,6 @@ if (require.main === module) {
   });
 
   process.on("SIGINT", async () => {
-    console.log(`Encerrando ${this.serviceName}...`);
     if (serviceRegistry.unregister) {
       serviceRegistry.unregister(this.serviceName);
     }

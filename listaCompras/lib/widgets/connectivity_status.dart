@@ -72,7 +72,6 @@ class _ConnectivityStatusState extends State<ConnectivityStatus> {
 
     return Column(
       children: [
-        // Barra de status de conectividade
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           height: isConnected ? 0 : 50,
@@ -114,7 +113,6 @@ class _ConnectivityStatusState extends State<ConnectivityStatus> {
           ),
         ),
 
-        // Barra de sincronização
         if (isSyncing || _lastSyncStatus.isNotEmpty)
           Container(
             height: 40,
